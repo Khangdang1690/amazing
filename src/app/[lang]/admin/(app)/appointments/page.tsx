@@ -9,7 +9,7 @@ import { AppointmentRowActions } from "../_components/appointment-row-actions";
 
 export const metadata = { title: "Appointments — Admin" };
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 type SearchParams = Promise<{
   status?: string;
