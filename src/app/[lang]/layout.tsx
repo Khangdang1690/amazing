@@ -19,7 +19,7 @@ const serif = Newsreader({
 
 const sans = DM_Sans({
   variable: "--font-sans",
-  subsets: ["latin", "latin-ext", "vietnamese"],
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
