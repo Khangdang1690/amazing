@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Instrument_Serif, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Newsreader, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 import { Nav } from "@/components/layout/nav";
 import { Footer } from "@/components/layout/footer";
@@ -9,23 +9,23 @@ import { SHOP } from "@/lib/env";
 import { LOCALES, isLocale } from "@/i18n/config";
 import { getDictionary, tt } from "@/i18n/dictionaries";
 
-const serif = Instrument_Serif({
+const serif = Newsreader({
   variable: "--font-display",
   weight: "400",
   style: ["normal", "italic"],
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext", "vietnamese"],
   display: "swap",
 });
 
 const sans = DM_Sans({
   variable: "--font-sans",
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin", "latin-ext", "vietnamese"],
   display: "swap",
 });
 
 const mono = JetBrains_Mono({
   variable: "--font-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   display: "swap",
 });
 
