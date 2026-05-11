@@ -3,8 +3,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendBookingReminder } from "@/lib/email";
 import { env } from "@/lib/env";
 
-// Runs hourly (see vercel.json). Sends a reminder email to anyone whose
-// appointment starts in the next ~24h and who hasn't been reminded yet.
+// Runs daily (see vercel.json — Vercel Hobby plan limits cron to one run/day).
+// Sends a reminder email to anyone whose appointment starts in the next
+// ~12–36 hours and who hasn't been reminded yet. Schedule is `0 17 * * *`
+// = 17:00 UTC ≈ 9 AM PST / 10 AM PDT, so customers booked for tomorrow get
+// notified the morning before.
 export async function GET(request: NextRequest) {
   // Vercel cron sends a header `authorization: Bearer <CRON_SECRET>` when
   // CRON_SECRET is set. Also allow a `?secret=` for manual testing.
@@ -18,8 +21,11 @@ export async function GET(request: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
   const now = new Date();
-  const in25h = new Date(now.getTime() + 25 * 60 * 60 * 1000);
-  const in23h = new Date(now.getTime() + 23 * 60 * 60 * 1000);
+  // 24-hour window starting 12h from now — captures everything happening
+  // "tomorrow" relative to a morning run. `reminder_sent_at` is the
+  // idempotency guard against double-sends.
+  const windowStart = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 36 * 60 * 60 * 1000);
 
   const { data: appts, error } = await supabase
     .from("appointments")
@@ -29,8 +35,8 @@ export async function GET(request: NextRequest) {
     )
     .eq("status", "confirmed")
     .is("reminder_sent_at", null)
-    .gte("starts_at", in23h.toISOString())
-    .lte("starts_at", in25h.toISOString());
+    .gte("starts_at", windowStart.toISOString())
+    .lte("starts_at", windowEnd.toISOString());
 
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

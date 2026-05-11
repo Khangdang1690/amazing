@@ -56,7 +56,7 @@ Open <http://localhost:3000>.
 | `/admin/hours` | Weekly hours + time-off |
 | `/admin/gallery` | Upload/delete gallery photos |
 | `/admin/login` | Sign in |
-| `/api/cron/reminders` | Hourly cron — emails 24h reminders |
+| `/api/cron/reminders` | Daily cron — emails reminders for next-day appointments |
 
 ## Admin setup
 
