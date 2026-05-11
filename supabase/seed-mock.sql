@@ -25,7 +25,7 @@ select * from (values
   ('https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=900&q=80', 'Tommy at the chair',                           2),
   ('https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=900&q=80', 'Classic taper with beard work',                3),
   ('https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=900&q=80', 'Clippers in motion',                           4),
-  ('https://images.unsplash.com/photo-1635273051937-c0277a72e0e4?w=900&q=80', 'Hot towel before the shave',                   5),
+  ('https://images.unsplash.com/photo-1622287162716-f311baa1a2b8?w=900&q=80', 'In the cut',                                   5),
   ('https://images.unsplash.com/photo-1567894340315-735d7c361db0?w=900&q=80', 'Detail on the temple',                         6),
   ('https://images.unsplash.com/photo-1593702275687-f8b402bf1fb5?w=900&q=80', 'Shop, late afternoon',                         7)
 ) as v(storage_path, caption, display_order)
