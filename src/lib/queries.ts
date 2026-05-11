@@ -6,6 +6,53 @@ import type {
   ShopHours,
   GalleryPhoto,
 } from "@/lib/types";
+import type { Locale } from "@/i18n/config";
+
+/**
+ * Apply translations from `public.translations` to a list of rows.
+ * Rows without a matching translation row keep their canonical value.
+ */
+async function applyTranslations<T extends { id: string }>(
+  rows: T[],
+  entityType: string,
+  locale: Locale,
+  fields: readonly (keyof T)[],
+): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  if (locale === "en") return rows; // canonical columns are English
+
+  const ids = rows.map((r) => r.id);
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from("translations")
+    .select("entity_id, field, value")
+    .eq("entity_type", entityType)
+    .eq("locale", locale)
+    .in("entity_id", ids);
+
+  if (!data || data.length === 0) return rows;
+
+  // index: id -> field -> value
+  const map = new Map<string, Record<string, string>>();
+  for (const t of data) {
+    const inner = map.get(t.entity_id) ?? {};
+    inner[t.field] = t.value;
+    map.set(t.entity_id, inner);
+  }
+
+  const fieldSet = new Set(fields.map(String));
+  return rows.map((r) => {
+    const overrides = map.get(r.id);
+    if (!overrides) return r;
+    const out: T = { ...r };
+    for (const [k, v] of Object.entries(overrides)) {
+      if (fieldSet.has(k)) {
+        (out as Record<string, unknown>)[k] = v;
+      }
+    }
+    return out;
+  });
+}
 
 export async function getActiveBarbers(): Promise<Barber[]> {
   const supabase = createSupabaseAdminClient();
@@ -67,6 +114,61 @@ export async function getGalleryPhotos(): Promise<GalleryPhoto[]> {
     .select("*")
     .order("display_order");
   return data ?? [];
+}
+
+// -----------------------------------------------------------------
+// Locale-aware variants. English locale returns canonical rows.
+// Vietnamese locale merges in any rows from `public.translations`.
+// -----------------------------------------------------------------
+
+export async function getActiveBarbersLocalized(
+  locale: Locale,
+): Promise<Barber[]> {
+  const rows = await getActiveBarbers();
+  return applyTranslations(rows, "barber", locale, ["name", "bio"] as const);
+}
+
+export async function getBarberBySlugLocalized(
+  slug: string,
+  locale: Locale,
+): Promise<Barber | null> {
+  const row = await getBarberBySlug(slug);
+  if (!row) return null;
+  const [out] = await applyTranslations([row], "barber", locale, [
+    "name",
+    "bio",
+  ] as const);
+  return out;
+}
+
+export async function getActiveServicesLocalized(
+  locale: Locale,
+): Promise<Service[]> {
+  const rows = await getActiveServices();
+  return applyTranslations(rows, "service", locale, [
+    "name",
+    "description",
+  ] as const);
+}
+
+export async function getServicesForBarberLocalized(
+  barberId: string,
+  locale: Locale,
+): Promise<Service[]> {
+  const rows = await getServicesForBarber(barberId);
+  return applyTranslations(rows, "service", locale, [
+    "name",
+    "description",
+  ] as const);
+}
+
+export async function getGalleryPhotosLocalized(
+  locale: Locale,
+): Promise<GalleryPhoto[]> {
+  const rows = await getGalleryPhotos();
+  return applyTranslations(rows, "gallery_photo", locale, [
+    "caption",
+  ] as const);
 }
 
 export function publicPhotoUrl(storagePath: string): string {

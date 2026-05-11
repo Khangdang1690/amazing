@@ -1,7 +1,11 @@
 import { addMinutes } from "date-fns";
+import { vi as viLocale, enUS } from "date-fns/locale";
 import { fromZonedTime, toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+import type { Locale as AppLocale } from "@/i18n/config";
+
+const dateFnsLocale = { vi: viLocale, en: enUS } as const;
 
 const SLOT_GRID_MINUTES = 15;
 
@@ -114,20 +118,25 @@ export function addDaysISO(dateISO: string, days: number): string {
   return formatInTimeZone(noon, tz, "yyyy-MM-dd");
 }
 
-/** Pretty date like "Tue, May 14". */
-export function formatDateLabel(dateISO: string): string {
+/** Pretty date like "Tue, May 14" / "T3, 14 thg 5". */
+export function formatDateLabel(dateISO: string, locale: AppLocale = "en"): string {
   const tz = env.shopTimezone;
   const noon = fromZonedTime(`${dateISO}T12:00:00`, tz);
-  return formatInTimeZone(noon, tz, "EEE, MMM d");
+  return formatInTimeZone(noon, tz, "EEE, MMM d", {
+    locale: dateFnsLocale[locale],
+  });
 }
 
-/** Pretty date+time like "Tue, May 14 at 2:30 PM". */
-export function formatDateTimeLabel(isoUTC: string): string {
-  return formatInTimeZone(
-    new Date(isoUTC),
-    env.shopTimezone,
-    "EEE, MMM d 'at' h:mm a",
-  );
+/** Pretty date+time like "Tue, May 14 at 2:30 PM" / "T3, 14 thg 5 lúc 14:30". */
+export function formatDateTimeLabel(
+  isoUTC: string,
+  locale: AppLocale = "en",
+): string {
+  const pattern =
+    locale === "vi" ? "EEE, d MMM 'lúc' HH:mm" : "EEE, MMM d 'at' h:mm a";
+  return formatInTimeZone(new Date(isoUTC), env.shopTimezone, pattern, {
+    locale: dateFnsLocale[locale],
+  });
 }
 
 /** Day-of-week index (0=Sun..6=Sat) in shop TZ for a YYYY-MM-DD. */

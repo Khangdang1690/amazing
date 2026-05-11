@@ -7,29 +7,52 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SHOP } from "@/lib/env";
 import { formatPhone } from "@/lib/phone";
+import { type Locale, localePath, tt } from "@/i18n/config";
+import { LocaleSwitcher } from "./locale-switcher";
 
-const links = [
-  { href: "/services", label: "Services" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/contact", label: "Visit" },
-  { href: "/my-bookings", label: "My Bookings" },
-];
+type NavMessages = {
+  homeAriaLabel: string;
+  tagline: string;
+  services: string;
+  gallery: string;
+  visit: string;
+  myBookings: string;
+  book: string;
+  bookOnline: string;
+  openMenu: string;
+  call: string;
+  switcherAria: string;
+  switcherVi: string;
+  switcherEn: string;
+};
 
-export function Nav() {
+type Props = {
+  locale: Locale;
+  messages: NavMessages;
+};
+
+export function Nav({ locale, messages }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const links = [
+    { href: localePath(locale, "/services"), label: messages.services },
+    { href: localePath(locale, "/gallery"), label: messages.gallery },
+    { href: localePath(locale, "/contact"), label: messages.visit },
+    { href: localePath(locale, "/my-bookings"), label: messages.myBookings },
+  ];
 
   return (
     <header className="relative z-30 border-b border-border bg-background/70 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-6 md:px-10">
         <Link
-          href="/"
+          href={localePath(locale, "/")}
           className="flex items-baseline gap-2 leading-none"
-          aria-label={`${SHOP.name} home`}
+          aria-label={tt(messages.homeAriaLabel, { shop: SHOP.name })}
         >
           <span className="font-display text-2xl italic">Amazing</span>
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground sm:inline">
-            Hair Design · Westminster
+            {messages.tagline}
           </span>
         </Link>
 
@@ -48,24 +71,29 @@ export function Nav() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-6 md:flex">
+        <div className="hidden items-center gap-4 md:flex">
           <a
             href={`tel:${SHOP.phoneE164}`}
             className="font-mono text-xs uppercase tracking-[0.18em] text-foreground/70 hover:text-foreground"
           >
             {formatPhone(SHOP.phoneE164)}
           </a>
+          <LocaleSwitcher
+            locale={locale}
+            ariaLabel={messages.switcherAria}
+            labels={{ vi: messages.switcherVi, en: messages.switcherEn }}
+          />
           <Link
-            href="/book"
+            href={localePath(locale, "/book")}
             className="group relative inline-flex items-center gap-2 border border-foreground bg-foreground px-5 py-3 text-xs uppercase tracking-[0.2em] text-background transition-colors hover:bg-copper hover:text-background"
           >
-            <span>Book</span>
+            <span>{messages.book}</span>
             <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
           </Link>
         </div>
 
         <button
-          aria-label="Open menu"
+          aria-label={messages.openMenu}
           aria-expanded={open}
           className="-mr-2 p-2 md:hidden"
           onClick={() => setOpen((v) => !v)}
@@ -93,15 +121,22 @@ export function Nav() {
                 onClick={() => setOpen(false)}
                 className="border-b border-border/60 py-4 font-mono text-sm uppercase tracking-[0.18em] text-foreground/80"
               >
-                Call {formatPhone(SHOP.phoneE164)}
+                {messages.call} {formatPhone(SHOP.phoneE164)}
               </a>
               <Link
-                href="/book"
+                href={localePath(locale, "/book")}
                 onClick={() => setOpen(false)}
                 className="mt-4 inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-5 py-4 text-xs uppercase tracking-[0.2em] text-background"
               >
-                Book online <span aria-hidden>→</span>
+                {messages.bookOnline} <span aria-hidden>→</span>
               </Link>
+              <div className="mt-4 flex justify-center">
+                <LocaleSwitcher
+                  locale={locale}
+                  ariaLabel={messages.switcherAria}
+                  labels={{ vi: messages.switcherVi, en: messages.switcherEn }}
+                />
+              </div>
             </div>
           </div>
         </div>

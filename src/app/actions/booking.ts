@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createBookingSchema, requestOtpSchema, verifyOtpSchema } from "@/lib/validators";
 import { normalizeUSPhone } from "@/lib/phone";
 import { sendBookingConfirmation, sendLoginCodeEmail } from "@/lib/email";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 
 type ActionResult =
   | { ok: true; redirectTo?: string }
@@ -115,7 +116,12 @@ export async function createBookingAction(
   revalidatePath("/admin");
   revalidatePath(`/book/${barber.id}`);
 
-  redirect(`/book/success?id=${appointmentId}`);
+  const localeRaw = formData.get("locale");
+  const locale =
+    typeof localeRaw === "string" && isLocale(localeRaw)
+      ? localeRaw
+      : DEFAULT_LOCALE;
+  redirect(`/${locale}/book/success?id=${appointmentId}`);
 }
 
 export async function cancelBookingAction(

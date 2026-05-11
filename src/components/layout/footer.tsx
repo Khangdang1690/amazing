@@ -3,21 +3,41 @@ import { SHOP } from "@/lib/env";
 import { formatPhone } from "@/lib/phone";
 import { InstagramIcon } from "@/components/icons";
 import { Marquee } from "@/components/marquee";
+import { type Locale, localePath, tt } from "@/i18n/config";
 
-export function Footer() {
+type FooterMessages = {
+  marquee: string[];
+  wordmarkBlurb: string;
+  visit: string;
+  pages: string;
+  elsewhere: string;
+  services: string;
+  gallery: string;
+  visitLink: string;
+  myBookings: string;
+  bookOnline: string;
+  tagline: string;
+  copyright: string;
+};
+
+type Props = {
+  locale: Locale;
+  messages: FooterMessages;
+};
+
+export function Footer({ locale, messages }: Props) {
+  const sitemap = [
+    { href: localePath(locale, "/services"), label: messages.services },
+    { href: localePath(locale, "/gallery"), label: messages.gallery },
+    { href: localePath(locale, "/contact"), label: messages.visitLink },
+    { href: localePath(locale, "/my-bookings"), label: messages.myBookings },
+    { href: localePath(locale, "/book"), label: messages.bookOnline },
+  ];
+
   return (
     <footer className="relative mt-32 border-t border-border">
       <div className="border-b border-border">
-        <Marquee
-          items={[
-            "Amazing Hair Design",
-            "Westminster, CA",
-            "Walk-ins Welcome",
-            "Est. — Tommy",
-            "Fades · Shaves · Beard Work",
-            "Book Online",
-          ]}
-        />
+        <Marquee items={messages.marquee} />
       </div>
 
       <div className="mx-auto max-w-[1400px] px-6 py-16 md:px-10">
@@ -30,14 +50,13 @@ export function Footer() {
               Design.
             </h2>
             <p className="mt-6 max-w-xs text-sm text-muted-foreground">
-              A barbershop on Bolsa. Open six days a week. Same chair, same
-              hands, fresh every time.
+              {messages.wordmarkBlurb}
             </p>
           </div>
 
           {/* Visit */}
           <div className="space-y-3 text-sm">
-            <p className="eyebrow">Visit</p>
+            <p className="eyebrow">{messages.visit}</p>
             <p className="leading-relaxed">{SHOP.address}</p>
             <a
               href={`tel:${SHOP.phoneE164}`}
@@ -49,15 +68,9 @@ export function Footer() {
 
           {/* Sitemap */}
           <div className="space-y-3 text-sm">
-            <p className="eyebrow">Pages</p>
+            <p className="eyebrow">{messages.pages}</p>
             <ul className="space-y-1.5">
-              {[
-                { href: "/services", label: "Services" },
-                { href: "/gallery", label: "Gallery" },
-                { href: "/contact", label: "Visit" },
-                { href: "/my-bookings", label: "My bookings" },
-                { href: "/book", label: "Book online" },
-              ].map((l) => (
+              {sitemap.map((l) => (
                 <li key={l.href}>
                   <Link
                     href={l.href}
@@ -72,7 +85,7 @@ export function Footer() {
 
           {/* Social */}
           <div className="space-y-3 text-sm">
-            <p className="eyebrow">Elsewhere</p>
+            <p className="eyebrow">{messages.elsewhere}</p>
             <a
               href={SHOP.instagram}
               target="_blank"
@@ -88,8 +101,13 @@ export function Footer() {
         <hr className="hairline my-10" />
 
         <div className="flex flex-wrap items-end justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          <span>© {new Date().getFullYear()} {SHOP.name}</span>
-          <span>Designed for the chair — built for the phone.</span>
+          <span>
+            {tt(messages.copyright, {
+              year: new Date().getFullYear(),
+              shop: SHOP.name,
+            })}
+          </span>
+          <span>{messages.tagline}</span>
         </div>
       </div>
     </footer>
