@@ -27,7 +27,7 @@ export default async function AdminTodayPage({
   const { data: appts } = await supabase
     .from("appointments")
     .select(
-      `id, customer_name, customer_phone, customer_email, starts_at, ends_at, status, notes, internal_notes,
+      `id, customer_name, customer_phone, starts_at, ends_at, status, notes, internal_notes,
        barbers ( name ), services ( name )`,
     )
     .gte("starts_at", dayStart.toISOString())
@@ -38,7 +38,6 @@ export default async function AdminTodayPage({
     id: a.id as string,
     customer_name: a.customer_name as string,
     customer_phone: a.customer_phone as string,
-    customer_email: a.customer_email as string,
     starts_at: a.starts_at as string,
     status: a.status as
       | "confirmed"
@@ -97,12 +96,6 @@ export default async function AdminTodayPage({
                       className="hover:text-foreground"
                     >
                       {formatPhone(a.customer_phone)}
-                    </a>
-                    <a
-                      href={`mailto:${a.customer_email}`}
-                      className="hover:text-foreground"
-                    >
-                      {a.customer_email}
                     </a>
                   </div>
                   {a.notes && (

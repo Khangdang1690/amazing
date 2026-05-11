@@ -37,7 +37,6 @@ export type Appointment = {
   service_id: string;
   customer_name: string;
   customer_phone: string;
-  customer_email: string;
   starts_at: string;
   ends_at: string;
   status: AppointmentStatus;

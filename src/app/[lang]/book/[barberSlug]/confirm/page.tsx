@@ -107,8 +107,6 @@ export default async function ConfirmPage({
           namePlaceholder: t.namePlaceholder,
           phoneLabel: t.phoneLabel,
           phonePlaceholder: t.phonePlaceholder,
-          emailLabel: t.emailLabel,
-          emailPlaceholder: t.emailPlaceholder,
           notesLabel: t.notesLabel,
           notesPlaceholder: t.notesPlaceholder,
           booking: t.booking_,

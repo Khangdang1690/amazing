@@ -123,13 +123,11 @@
     "namePlaceholder": "Nguyễn Văn A",
     "phoneLabel": "b. Số điện thoại",
     "phonePlaceholder": "(714) 555-1234",
-    "emailLabel": "c. Email",
-    "emailPlaceholder": "ban@example.com",
     "notesLabel": "Có gì cần lưu ý? (không bắt buộc)",
     "notesPlaceholder": "Kiểu cụ thể, độ fade, v.v.",
     "booking_": "Đang đặt…",
     "lockItIn": "Xác nhận đặt",
-    "confirmationNote": "Xác nhận sẽ gửi vào email. Không spam, bao giờ."
+    "confirmationNote": "Chúng tôi sẽ gửi mã qua tin nhắn đến số này nếu bạn cần xem hoặc huỷ lịch."
   },
   "success": {
     "confirmed": "Đã xác nhận",

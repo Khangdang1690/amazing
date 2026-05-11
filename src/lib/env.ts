@@ -11,9 +11,9 @@ export const env = {
   supabasePublishableKey:
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
   supabaseSecretKey: process.env.SUPABASE_SECRET_KEY ?? "",
-  resendApiKey: process.env.RESEND_API_KEY ?? "",
-  resendFromEmail:
-    process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioFromPhone: process.env.TWILIO_FROM_PHONE ?? "",
   allowedAdminEmails: (process.env.ALLOWED_ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
@@ -29,7 +29,6 @@ export const env = {
   shopInstagram:
     process.env.SHOP_INSTAGRAM ??
     "https://www.instagram.com/tommyamazinghair/",
-  cronSecret: process.env.CRON_SECRET ?? "",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 };
 

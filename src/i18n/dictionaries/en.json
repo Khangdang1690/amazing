@@ -123,13 +123,11 @@
     "namePlaceholder": "Jane Smith",
     "phoneLabel": "b. Phone",
     "phonePlaceholder": "(714) 555-1234",
-    "emailLabel": "c. Email",
-    "emailPlaceholder": "you@example.com",
     "notesLabel": "Anything we should know? (optional)",
     "notesPlaceholder": "Specific style, fade length, etc.",
     "booking_": "Booking…",
     "lockItIn": "Lock it in",
-    "confirmationNote": "Confirmation goes to your email. No spam, ever."
+    "confirmationNote": "We'll text you a code at this number if you need to view or cancel your booking."
   },
   "success": {
     "confirmed": "Confirmed",

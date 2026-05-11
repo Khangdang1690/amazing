@@ -12,8 +12,6 @@ type Messages = {
   namePlaceholder: string;
   phoneLabel: string;
   phonePlaceholder: string;
-  emailLabel: string;
-  emailPlaceholder: string;
   notesLabel: string;
   notesPlaceholder: string;
   booking: string;
@@ -62,37 +60,20 @@ export function ConfirmForm({
         />
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="customerPhone" className="eyebrow mb-2">
-            {messages.phoneLabel}
-          </Label>
-          <Input
-            id="customerPhone"
-            name="customerPhone"
-            type="tel"
-            inputMode="tel"
-            required
-            autoComplete="tel"
-            placeholder={messages.phonePlaceholder}
-            className="h-12 border-border bg-background text-base"
-          />
-        </div>
-        <div>
-          <Label htmlFor="customerEmail" className="eyebrow mb-2">
-            {messages.emailLabel}
-          </Label>
-          <Input
-            id="customerEmail"
-            name="customerEmail"
-            type="email"
-            inputMode="email"
-            required
-            autoComplete="email"
-            placeholder={messages.emailPlaceholder}
-            className="h-12 border-border bg-background text-base"
-          />
-        </div>
+      <div>
+        <Label htmlFor="customerPhone" className="eyebrow mb-2">
+          {messages.phoneLabel}
+        </Label>
+        <Input
+          id="customerPhone"
+          name="customerPhone"
+          type="tel"
+          inputMode="tel"
+          required
+          autoComplete="tel"
+          placeholder={messages.phonePlaceholder}
+          className="h-12 border-border bg-background text-base"
+        />
       </div>
 
       <div>

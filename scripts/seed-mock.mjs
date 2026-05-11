@@ -230,7 +230,7 @@ async function seedStoryAppointments() {
   const bs = Object.fromEntries(barbers.map((b) => [b.slug, b.id]));
   const ss = Object.fromEntries(services.map((s) => [s.name, s]));
 
-  // [barberSlug, serviceName, name, phone, email, daysOffset, hour, minute, status, notes]
+  // [barberSlug, serviceName, name, phone, _email (unused), daysOffset, hour, minute, status, notes]
   const rows = [
     // Tommy past
     ["tommy", "Fade",                   "Tuan Pham",        "+17145550142", "tuan.pham@gmail.com",      -3,  11,  0, "completed", null],
@@ -282,7 +282,7 @@ async function seedStoryAppointments() {
     ["kevin", "Beard Trim",             "Anh Vu",           "+17145550502", "anh.vu@gmail.com",         12,  15,  0, "confirmed", null],
   ];
 
-  const inserts = rows.map(([slug, svc, name, phone, email, off, h, m, status, notes]) => {
+  const inserts = rows.map(([slug, svc, name, phone, , off, h, m, status, notes]) => {
     const startsAt = shopDateTime(off, h, m);
     const service = ss[svc];
     return {
@@ -290,7 +290,6 @@ async function seedStoryAppointments() {
       service_id: service.id,
       customer_name: name,
       customer_phone: phone,
-      customer_email: email,
       starts_at: startsAt.toISOString(),
       ends_at: addMinutes(startsAt, service.duration_minutes).toISOString(),
       status,
@@ -479,7 +478,6 @@ async function seedBulkAppointments() {
         service_id: service.id,
         customer_name: customer[0],
         customer_phone: customer[1],
-        customer_email: customer[2],
         starts_at: new Date(startMs).toISOString(),
         ends_at: new Date(endMs).toISOString(),
         status,

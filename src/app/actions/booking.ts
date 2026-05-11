@@ -6,7 +6,7 @@ import { addMinutes } from "date-fns";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createBookingSchema, requestOtpSchema, verifyOtpSchema } from "@/lib/validators";
 import { normalizeUSPhone } from "@/lib/phone";
-import { sendBookingConfirmation, sendLoginCodeEmail } from "@/lib/email";
+import { sendLoginCodeSms } from "@/lib/sms";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 
 type ActionResult =
@@ -23,7 +23,6 @@ export async function createBookingAction(
     startsAt: formData.get("startsAt"),
     customerName: formData.get("customerName"),
     customerPhone: formData.get("customerPhone"),
-    customerEmail: formData.get("customerEmail"),
     notes: formData.get("notes") ?? "",
   });
 
@@ -80,7 +79,6 @@ export async function createBookingAction(
       p_service_id: service.id,
       p_customer_name: input.customerName,
       p_customer_phone: phoneE164,
-      p_customer_email: input.customerEmail,
       p_starts_at: startsAt.toISOString(),
       p_ends_at: endsAt.toISOString(),
       p_notes: input.notes && input.notes.length > 0 ? input.notes : null,
@@ -101,17 +99,6 @@ export async function createBookingAction(
   }
 
   const appointmentId = (inserted as { id: string }).id;
-
-  // Fire-and-forget confirmation email
-  sendBookingConfirmation({
-    to: input.customerEmail,
-    customerName: input.customerName,
-    barberName: barber.name,
-    serviceName: service.name,
-    startsAt: startsAt.toISOString(),
-    priceCents: service.price_cents,
-    durationMinutes: service.duration_minutes,
-  }).catch((e) => console.error("[email] confirmation failed:", e));
 
   revalidatePath("/admin");
   revalidatePath(`/book/${barber.id}`);
@@ -180,16 +167,17 @@ export async function requestOtpAction(
 
   const supabase = createSupabaseAdminClient();
 
-  // Find the most recent email on file for this phone
+  // Anti-abuse gate: only send SMS to phones that have a prior booking.
+  // Without this, anyone could burn our SMS budget by submitting random numbers.
   const { data: prior } = await supabase
     .from("appointments")
-    .select("customer_email")
+    .select("id")
     .eq("customer_phone", phone)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (!prior?.customer_email) {
+  if (!prior?.id) {
     return {
       ok: false,
       error: "We couldn't find any bookings for that number.",
@@ -204,8 +192,8 @@ export async function requestOtpAction(
     .from("login_codes")
     .insert({ phone, code_hash: codeHash, expires_at: expiresAt });
 
-  sendLoginCodeEmail({ to: prior.customer_email, code }).catch((e) =>
-    console.error("[email] OTP failed:", e),
+  sendLoginCodeSms({ to: phone, code }).catch((e) =>
+    console.error("[sms] OTP failed:", e),
   );
 
   return { ok: true };

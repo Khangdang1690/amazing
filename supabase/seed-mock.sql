@@ -74,226 +74,226 @@ begin
 
   -- ========================== TOMMY — past ==================================
   insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone, customer_email,
+    (barber_id, service_id, customer_name, customer_phone,
      starts_at, ends_at, status, notes, reminder_sent_at)
   values
   -- 3 days ago
-  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142', 'tuan.pham@gmail.com',
+  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
     ((current_date - 3)::timestamp + time '11:00') at time zone v_tz,
     ((current_date - 3)::timestamp + time '11:45') at time zone v_tz,
     'completed', null, ((current_date - 4)::timestamp + time '11:00') at time zone v_tz),
   -- 5 days ago
-  (v_tommy, v_combo,   'David Kim',         '+17145550158', 'davidkim@yahoo.com',
+  (v_tommy, v_combo,   'David Kim',         '+17145550158',
     ((current_date - 5)::timestamp + time '14:30') at time zone v_tz,
     ((current_date - 5)::timestamp + time '15:20') at time zone v_tz,
     'completed', null, ((current_date - 6)::timestamp + time '14:30') at time zone v_tz),
   -- 7 days ago
-  (v_tommy, v_haircut, 'Mike Chen',         '+17145550199', 'mike.chen213@gmail.com',
+  (v_tommy, v_haircut, 'Mike Chen',         '+17145550199',
     ((current_date - 7)::timestamp + time '10:00') at time zone v_tz,
     ((current_date - 7)::timestamp + time '10:30') at time zone v_tz,
     'completed', 'Same as last time — number 2 fade.', null),
   -- 9 days ago
-  (v_tommy, v_fade,    'Bao Nguyen',        '+17145550221', 'bao.n@hotmail.com',
+  (v_tommy, v_fade,    'Bao Nguyen',        '+17145550221',
     ((current_date - 9)::timestamp + time '16:00') at time zone v_tz,
     ((current_date - 9)::timestamp + time '16:45') at time zone v_tz,
     'completed', null, null),
   -- 11 days ago
-  (v_tommy, v_shave,   'Jose Garcia',       '+17145550244', 'jose.garcia@gmail.com',
+  (v_tommy, v_shave,   'Jose Garcia',       '+17145550244',
     ((current_date - 11)::timestamp + time '18:00') at time zone v_tz,
     ((current_date - 11)::timestamp + time '18:45') at time zone v_tz,
     'completed', null, null),
   -- 14 days ago — Tuan again (regular!)
-  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142', 'tuan.pham@gmail.com',
+  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
     ((current_date - 14)::timestamp + time '11:00') at time zone v_tz,
     ((current_date - 14)::timestamp + time '11:45') at time zone v_tz,
     'completed', null, null),
   -- 17 days ago
-  (v_tommy, v_fade,    'Hieu Le',           '+17145550267', 'hieu.le.92@gmail.com',
+  (v_tommy, v_fade,    'Hieu Le',           '+17145550267',
     ((current_date - 17)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 17)::timestamp + time '13:45') at time zone v_tz,
     'completed', null, null),
   -- 20 days ago
-  (v_tommy, v_haircut, 'Marcus Johnson',    '+17145550283', 'marcusj@yahoo.com',
+  (v_tommy, v_haircut, 'Marcus Johnson',    '+17145550283',
     ((current_date - 20)::timestamp + time '17:30') at time zone v_tz,
     ((current_date - 20)::timestamp + time '18:00') at time zone v_tz,
     'completed', null, null),
   -- 22 days ago
-  (v_tommy, v_fade,    'Andy Vu',           '+17145550311', 'andyvu@gmail.com',
+  (v_tommy, v_fade,    'Andy Vu',           '+17145550311',
     ((current_date - 22)::timestamp + time '10:30') at time zone v_tz,
     ((current_date - 22)::timestamp + time '11:15') at time zone v_tz,
     'completed', 'Tight skin fade on the sides.', null),
   -- 24 days ago
-  (v_tommy, v_beard,   'Brian Nguyen',      '+17145550335', 'brian.nguyen@gmail.com',
+  (v_tommy, v_beard,   'Brian Nguyen',      '+17145550335',
     ((current_date - 24)::timestamp + time '12:30') at time zone v_tz,
     ((current_date - 24)::timestamp + time '12:50') at time zone v_tz,
     'completed', null, null),
   -- 26 days ago — David again
-  (v_tommy, v_combo,   'David Kim',         '+17145550158', 'davidkim@yahoo.com',
+  (v_tommy, v_combo,   'David Kim',         '+17145550158',
     ((current_date - 26)::timestamp + time '14:30') at time zone v_tz,
     ((current_date - 26)::timestamp + time '15:20') at time zone v_tz,
     'completed', null, null),
   -- 28 days ago — cancelled
-  (v_tommy, v_fade,    'Carlos Rodriguez',  '+17145550349', 'crodriguez@yahoo.com',
+  (v_tommy, v_fade,    'Carlos Rodriguez',  '+17145550349',
     ((current_date - 28)::timestamp + time '09:30') at time zone v_tz,
     ((current_date - 28)::timestamp + time '10:15') at time zone v_tz,
     'cancelled', null, null);
 
   -- ========================== TOMMY — upcoming ==============================
   insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone, customer_email,
+    (barber_id, service_id, customer_name, customer_phone,
      starts_at, ends_at, status, notes)
   values
-  (v_tommy, v_fade,    'Tony Park',         '+17145550372', 't.park@gmail.com',
+  (v_tommy, v_fade,    'Tony Park',         '+17145550372',
     ((current_date + 1)::timestamp + time '11:00') at time zone v_tz,
     ((current_date + 1)::timestamp + time '11:45') at time zone v_tz,
     'confirmed', null),
-  (v_tommy, v_haircut, 'Linh Nguyen',       '+17145550388', 'linh.nguyen@gmail.com',
+  (v_tommy, v_haircut, 'Linh Nguyen',       '+17145550388',
     ((current_date + 3)::timestamp + time '15:00') at time zone v_tz,
     ((current_date + 3)::timestamp + time '15:30') at time zone v_tz,
     'confirmed', 'First time here — please ask before going short.'),
-  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142', 'tuan.pham@gmail.com',
+  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
     ((current_date + 5)::timestamp + time '11:00') at time zone v_tz,
     ((current_date + 5)::timestamp + time '11:45') at time zone v_tz,
     'confirmed', 'Same as always.'),
-  (v_tommy, v_combo,   'Ryan Patel',        '+17145550401', 'ryan.patel@gmail.com',
+  (v_tommy, v_combo,   'Ryan Patel',        '+17145550401',
     ((current_date + 9)::timestamp + time '13:30') at time zone v_tz,
     ((current_date + 9)::timestamp + time '14:20') at time zone v_tz,
     'confirmed', null);
 
   -- ========================== ANDY — past ===================================
   insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone, customer_email,
+    (barber_id, service_id, customer_name, customer_phone,
      starts_at, ends_at, status, notes, reminder_sent_at)
   values
   -- 2 days ago
-  (v_andy, v_fade,    'Khanh Phan',         '+17145550417', 'khanh.phan@gmail.com',
+  (v_andy, v_fade,    'Khanh Phan',         '+17145550417',
     ((current_date - 2)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 2)::timestamp + time '13:45') at time zone v_tz,
     'completed', null, ((current_date - 3)::timestamp + time '13:00') at time zone v_tz),
   -- 4 days ago
-  (v_andy, v_haircut, 'Daniel Ortiz',       '+17145550428', 'danielortiz@yahoo.com',
+  (v_andy, v_haircut, 'Daniel Ortiz',       '+17145550428',
     ((current_date - 4)::timestamp + time '17:00') at time zone v_tz,
     ((current_date - 4)::timestamp + time '17:30') at time zone v_tz,
     'completed', null, null),
   -- 6 days ago — Saturday kids cut
-  (v_andy, v_kids,    'Eric Tran',          '+17145550433', 'eric.tran@gmail.com',
+  (v_andy, v_kids,    'Eric Tran',          '+17145550433',
     ((current_date - 6)::timestamp + time '11:30') at time zone v_tz,
     ((current_date - 6)::timestamp + time '12:00') at time zone v_tz,
     'completed', '8 years old, wiggly. Bring stickers!', null),
   -- 8 days ago
-  (v_andy, v_fade,    'Kevin Smith',        '+17145550441', 'ksmith.oc@gmail.com',
+  (v_andy, v_fade,    'Kevin Smith',        '+17145550441',
     ((current_date - 8)::timestamp + time '18:30') at time zone v_tz,
     ((current_date - 8)::timestamp + time '19:15') at time zone v_tz,
     'completed', null, null),
   -- 10 days ago
-  (v_andy, v_haircut, 'Hoang Le',           '+17145550457', 'hoang.le@gmail.com',
+  (v_andy, v_haircut, 'Hoang Le',           '+17145550457',
     ((current_date - 10)::timestamp + time '14:00') at time zone v_tz,
     ((current_date - 10)::timestamp + time '14:30') at time zone v_tz,
     'completed', null, null),
   -- 13 days ago — Khanh again
-  (v_andy, v_fade,    'Khanh Phan',         '+17145550417', 'khanh.phan@gmail.com',
+  (v_andy, v_fade,    'Khanh Phan',         '+17145550417',
     ((current_date - 13)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 13)::timestamp + time '13:45') at time zone v_tz,
     'completed', null, null),
   -- 16 days ago — no-show
-  (v_andy, v_shave,   'Anthony Diaz',       '+17145550466', 'a.diaz@yahoo.com',
+  (v_andy, v_shave,   'Anthony Diaz',       '+17145550466',
     ((current_date - 16)::timestamp + time '16:30') at time zone v_tz,
     ((current_date - 16)::timestamp + time '17:15') at time zone v_tz,
     'no_show', null, null),
   -- 19 days ago
-  (v_andy, v_haircut, 'Vincent Le',         '+17145550478', 'vincentle@gmail.com',
+  (v_andy, v_haircut, 'Vincent Le',         '+17145550478',
     ((current_date - 19)::timestamp + time '12:00') at time zone v_tz,
     ((current_date - 19)::timestamp + time '12:30') at time zone v_tz,
     'completed', null, null),
   -- 23 days ago
-  (v_andy, v_fade,    'Steven Chen',        '+17145550481', 's.chen@gmail.com',
+  (v_andy, v_fade,    'Steven Chen',        '+17145550481',
     ((current_date - 23)::timestamp + time '17:00') at time zone v_tz,
     ((current_date - 23)::timestamp + time '17:45') at time zone v_tz,
     'completed', null, null),
   -- 25 days ago
-  (v_andy, v_kids,    'Justin Pham',        '+17145550492', 'justin.pham88@gmail.com',
+  (v_andy, v_kids,    'Justin Pham',        '+17145550492',
     ((current_date - 25)::timestamp + time '10:00') at time zone v_tz,
     ((current_date - 25)::timestamp + time '10:30') at time zone v_tz,
     'completed', null, null);
 
   -- ========================== ANDY — upcoming ===============================
   insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone, customer_email,
+    (barber_id, service_id, customer_name, customer_phone,
      starts_at, ends_at, status, notes)
   values
-  (v_andy, v_haircut, 'Daniel Ortiz',       '+17145550428', 'danielortiz@yahoo.com',
+  (v_andy, v_haircut, 'Daniel Ortiz',       '+17145550428',
     ((current_date + 2)::timestamp + time '17:00') at time zone v_tz,
     ((current_date + 2)::timestamp + time '17:30') at time zone v_tz,
     'confirmed', null),
-  (v_andy, v_fade,    'Khanh Phan',         '+17145550417', 'khanh.phan@gmail.com',
+  (v_andy, v_fade,    'Khanh Phan',         '+17145550417',
     ((current_date + 6)::timestamp + time '13:00') at time zone v_tz,
     ((current_date + 6)::timestamp + time '13:45') at time zone v_tz,
     'confirmed', null),
-  (v_andy, v_kids,    'Eric Tran',          '+17145550433', 'eric.tran@gmail.com',
+  (v_andy, v_kids,    'Eric Tran',          '+17145550433',
     ((current_date + 8)::timestamp + time '11:30') at time zone v_tz,
     ((current_date + 8)::timestamp + time '12:00') at time zone v_tz,
     'confirmed', 'Birthday haircut!');
 
   -- ========================== KEVIN — past ==================================
   insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone, customer_email,
+    (barber_id, service_id, customer_name, customer_phone,
      starts_at, ends_at, status, notes, reminder_sent_at)
   values
   -- 1 day ago
-  (v_kevin, v_beard,   'Anh Vu',            '+17145550502', 'anh.vu@gmail.com',
+  (v_kevin, v_beard,   'Anh Vu',            '+17145550502',
     ((current_date - 1)::timestamp + time '15:00') at time zone v_tz,
     ((current_date - 1)::timestamp + time '15:20') at time zone v_tz,
     'completed', null, ((current_date - 2)::timestamp + time '15:00') at time zone v_tz),
   -- 3 days ago
-  (v_kevin, v_kids,    'William Park',      '+17145550516', 'wpark@gmail.com',
+  (v_kevin, v_kids,    'William Park',      '+17145550516',
     ((current_date - 3)::timestamp + time '10:30') at time zone v_tz,
     ((current_date - 3)::timestamp + time '11:00') at time zone v_tz,
     'completed', null, null),
   -- 6 days ago — cancelled
-  (v_kevin, v_haircut, 'Christopher Tran',  '+17145550533', 'chris.tran@yahoo.com',
+  (v_kevin, v_haircut, 'Christopher Tran',  '+17145550533',
     ((current_date - 6)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 6)::timestamp + time '13:30') at time zone v_tz,
     'cancelled', null, null),
   -- 8 days ago
-  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548', 'henrynguyen@gmail.com',
+  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
     ((current_date - 8)::timestamp + time '09:30') at time zone v_tz,
     ((current_date - 8)::timestamp + time '10:00') at time zone v_tz,
     'completed', 'Henry — regular. Just a clean-up.', null),
   -- 12 days ago
-  (v_kevin, v_fade,    'Phong Doan',        '+17145550551', 'phong.doan@gmail.com',
+  (v_kevin, v_fade,    'Phong Doan',        '+17145550551',
     ((current_date - 12)::timestamp + time '17:30') at time zone v_tz,
     ((current_date - 12)::timestamp + time '18:15') at time zone v_tz,
     'completed', null, null),
   -- 15 days ago — Anh again
-  (v_kevin, v_beard,   'Anh Vu',            '+17145550502', 'anh.vu@gmail.com',
+  (v_kevin, v_beard,   'Anh Vu',            '+17145550502',
     ((current_date - 15)::timestamp + time '15:00') at time zone v_tz,
     ((current_date - 15)::timestamp + time '15:20') at time zone v_tz,
     'completed', null, null),
   -- 18 days ago
-  (v_kevin, v_kids,    'Calvin Vo',         '+17145550569', 'calvin.vo@gmail.com',
+  (v_kevin, v_kids,    'Calvin Vo',         '+17145550569',
     ((current_date - 18)::timestamp + time '11:00') at time zone v_tz,
     ((current_date - 18)::timestamp + time '11:30') at time zone v_tz,
     'completed', null, null),
   -- 22 days ago — Henry again
-  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548', 'henrynguyen@gmail.com',
+  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
     ((current_date - 22)::timestamp + time '09:30') at time zone v_tz,
     ((current_date - 22)::timestamp + time '10:00') at time zone v_tz,
     'completed', null, null);
 
   -- ========================== KEVIN — upcoming ==============================
   insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone, customer_email,
+    (barber_id, service_id, customer_name, customer_phone,
      starts_at, ends_at, status, notes)
   values
-  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548', 'henrynguyen@gmail.com',
+  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
     ((current_date + 4)::timestamp + time '09:30') at time zone v_tz,
     ((current_date + 4)::timestamp + time '10:00') at time zone v_tz,
     'confirmed', null),
-  (v_kevin, v_fade,    'Phong Doan',        '+17145550551', 'phong.doan@gmail.com',
+  (v_kevin, v_fade,    'Phong Doan',        '+17145550551',
     ((current_date + 7)::timestamp + time '17:30') at time zone v_tz,
     ((current_date + 7)::timestamp + time '18:15') at time zone v_tz,
     'confirmed', null),
-  (v_kevin, v_beard,   'Anh Vu',            '+17145550502', 'anh.vu@gmail.com',
+  (v_kevin, v_beard,   'Anh Vu',            '+17145550502',
     ((current_date + 12)::timestamp + time '15:00') at time zone v_tz,
     ((current_date + 12)::timestamp + time '15:20') at time zone v_tz,
     'confirmed', null);
@@ -352,20 +352,6 @@ declare
     '+17145550788','+17145550794','+17145550802','+17145550817','+17145550824',
     '+17145550831','+17145550842','+17145550857','+17145550869','+17145550873',
     '+17145550881','+17145550894','+17145550902','+17145550918','+17145550927'
-  ];
-  v_emails text[] := array[
-    'tuan.pham@gmail.com','davidkim@yahoo.com','bao.n@hotmail.com','hieu.le.92@gmail.com','andyvu@gmail.com',
-    'brian.nguyen@gmail.com','t.park@gmail.com','linh.nguyen@gmail.com','khanh.phan@gmail.com','hoang.le@gmail.com',
-    'vincentle@gmail.com','justin.pham88@gmail.com','anh.vu@gmail.com','henrynguyen@gmail.com','phong.doan@gmail.com',
-    'calvin.vo@gmail.com','eric.tran@gmail.com','chris.tran@yahoo.com','wpark@gmail.com','s.chen@gmail.com',
-    'danielortiz@yahoo.com','jose.garcia@gmail.com','crodriguez@yahoo.com','ryan.patel@gmail.com','marcusj@yahoo.com',
-    'mike.chen213@gmail.com','a.diaz@yahoo.com','ksmith.oc@gmail.com','minh.t@gmail.com','hungpham@yahoo.com',
-    'long.nguyen@hotmail.com','vy.le@gmail.com','tanbui@gmail.com','kien.vo@yahoo.com','quan.doan@gmail.com',
-    'khoa.truong@gmail.com','duylam@hotmail.com','sang.ho@gmail.com','chidao@yahoo.com','phu.mai@gmail.com',
-    'eddiekim@icloud.com','j.tran@gmail.com','alex.nguyen@yahoo.com','ppark@gmail.com','hai.n@hotmail.com',
-    'phuc.tran@gmail.com','t.bui@yahoo.com','khang.doan@gmail.com','cuongvu@gmail.com','trung.le@yahoo.com',
-    'brandon.chen@gmail.com','jacobpham@icloud.com','aaron.lin@gmail.com','ethan.vu@yahoo.com','owen.park@gmail.com',
-    'lucas.tran@gmail.com','jay.p@gmail.com','nathan.le@gmail.com','timnguyen@yahoo.com','adam.hoang@gmail.com'
   ];
 
   v_notes_pool text[] := array[
@@ -513,11 +499,11 @@ begin
       end if;
 
       insert into public.appointments
-        (barber_id, service_id, customer_name, customer_phone, customer_email,
+        (barber_id, service_id, customer_name, customer_phone,
          starts_at, ends_at, status, notes, reminder_sent_at)
       values
         (v_barber_id, v_service_id,
-         v_names[v_cust_idx], v_phones[v_cust_idx], v_emails[v_cust_idx],
+         v_names[v_cust_idx], v_phones[v_cust_idx],
          v_starts_at, v_ends_at, v_status, v_note,
          case when v_status = 'completed'
               then v_starts_at - interval '24 hours'
@@ -586,11 +572,11 @@ begin
       end if;
 
       insert into public.appointments
-        (barber_id, service_id, customer_name, customer_phone, customer_email,
+        (barber_id, service_id, customer_name, customer_phone,
          starts_at, ends_at, status, notes)
       values
         (v_barber_id, v_service_id,
-         v_names[v_cust_idx], v_phones[v_cust_idx], v_emails[v_cust_idx],
+         v_names[v_cust_idx], v_phones[v_cust_idx],
          v_starts_at, v_ends_at, 'confirmed', v_note);
       v_inserted_future := v_inserted_future + 1;
     end loop;

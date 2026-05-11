@@ -26,7 +26,7 @@ export default async function AppointmentsPage({
   let q = supabase
     .from("appointments")
     .select(
-      `id, customer_name, customer_phone, customer_email, starts_at, status, notes,
+      `id, customer_name, customer_phone, starts_at, status, notes,
        barbers ( id, name ), services ( name )`,
     )
     .order("starts_at", { ascending: false })
@@ -46,7 +46,6 @@ export default async function AppointmentsPage({
     id: a.id as string,
     customer_name: a.customer_name as string,
     customer_phone: a.customer_phone as string,
-    customer_email: a.customer_email as string,
     starts_at: a.starts_at as string,
     status: a.status as
       | "confirmed"
@@ -177,13 +176,6 @@ export default async function AppointmentsPage({
                       className="hover:text-foreground"
                     >
                       {formatPhone(a.customer_phone)}
-                    </a>
-                    {" · "}
-                    <a
-                      href={`mailto:${a.customer_email}`}
-                      className="hover:text-foreground"
-                    >
-                      {a.customer_email}
                     </a>
                   </div>
                 </div>

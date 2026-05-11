@@ -12,7 +12,6 @@ export const createBookingSchema = z.object({
   startsAt: z.iso.datetime({ offset: true }),
   customerName: z.string().min(1, "Name is required").max(120),
   customerPhone: phoneSchema,
-  customerEmail: z.email("Enter a valid email"),
   notes: z.string().max(500).optional().or(z.literal("")),
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
