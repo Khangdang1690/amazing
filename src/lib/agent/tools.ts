@@ -1,6 +1,13 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+import {
+  gcalCreateEvent,
+  gcalListEvents,
+  gcalGetEvent,
+  gcalUpdateEvent,
+  gcalDeleteEvent,
+} from "@/lib/agent/composio-tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type FunctionDeclaration = {
@@ -469,6 +476,11 @@ const HANDLERS: Record<string, Handler> = {
   list_gallery_photos: listGalleryPhotos,
   delete_gallery_photo: deleteGalleryPhoto,
   web_search: webSearch,
+  composio_gcal_create_event: (_s, args) => gcalCreateEvent(args),
+  composio_gcal_list_events: (_s, args) => gcalListEvents(args),
+  composio_gcal_get_event: (_s, args) => gcalGetEvent(args),
+  composio_gcal_update_event: (_s, args) => gcalUpdateEvent(args),
+  composio_gcal_delete_event: (_s, args) => gcalDeleteEvent(args),
 };
 
 export async function runTool(
@@ -728,6 +740,158 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
         },
       },
       required: ["query"],
+    },
+  },
+  {
+    name: "composio_gcal_create_event",
+    description:
+      "Create an event on the shop's connected Google Calendar via Composio. Use when the owner asks to put an appointment, time-off, or reminder on the calendar. Always pass ISO 8601 datetimes with the correct shop-timezone offset.",
+    parameters: {
+      type: "object",
+      properties: {
+        summary: {
+          type: "string",
+          description: "Event title shown in Google Calendar.",
+        },
+        start_iso: {
+          type: "string",
+          description:
+            "Event start as ISO 8601 with timezone offset (e.g. 2026-05-13T15:00:00-07:00).",
+        },
+        end_iso: {
+          type: "string",
+          description: "Event end as ISO 8601 with timezone offset.",
+        },
+        description: {
+          type: "string",
+          description: "Optional longer notes shown in the event body.",
+        },
+        attendees: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional list of attendee email addresses.",
+        },
+        calendar_id: {
+          type: "string",
+          description:
+            "Optional calendar ID. Defaults to 'primary' (the connected account's main calendar).",
+        },
+      },
+      required: ["summary", "start_iso", "end_iso"],
+    },
+  },
+  {
+    name: "composio_gcal_list_events",
+    description:
+      "List or search events on the shop's connected Google Calendar. Use when the user asks 'what's on my calendar', 'show me events this week', or 'find the haircut appointment'. Always pass ISO 8601 datetimes with timezone offset for time_min_iso / time_max_iso. Returns event IDs, titles, times, and attendees — use the IDs as input to update/delete tools.",
+    parameters: {
+      type: "object",
+      properties: {
+        time_min_iso: {
+          type: "string",
+          description:
+            "Lower bound for event start, ISO 8601 with timezone offset. Omit to include past events.",
+        },
+        time_max_iso: {
+          type: "string",
+          description:
+            "Upper bound for event start, ISO 8601 with timezone offset. Omit for no upper bound.",
+        },
+        query: {
+          type: "string",
+          description:
+            "Optional free-text search across event titles, descriptions, and attendees.",
+        },
+        max_results: {
+          type: "integer",
+          description: "Max events to return (1-100, default 25).",
+        },
+        calendar_id: {
+          type: "string",
+          description:
+            "Optional calendar ID. Defaults to 'primary'.",
+        },
+      },
+    },
+  },
+  {
+    name: "composio_gcal_get_event",
+    description:
+      "Get the full details of a single Google Calendar event by its ID. Use after composio_gcal_list_events when you need fields not in the list response (full description, conferencing links, etc.).",
+    parameters: {
+      type: "object",
+      properties: {
+        event_id: {
+          type: "string",
+          description: "Google Calendar event ID (from list_events results).",
+        },
+        calendar_id: {
+          type: "string",
+          description: "Optional calendar ID. Defaults to 'primary'.",
+        },
+      },
+      required: ["event_id"],
+    },
+  },
+  {
+    name: "composio_gcal_update_event",
+    description:
+      "Update fields on an existing Google Calendar event. Only the fields you pass are changed — omit a field to leave it alone. Use to reschedule (start_iso / end_iso), rename (summary), edit notes (description), or change attendees. Always confirm the event_id with composio_gcal_list_events first if the user only referenced the event by name.",
+    parameters: {
+      type: "object",
+      properties: {
+        event_id: {
+          type: "string",
+          description: "Google Calendar event ID to update.",
+        },
+        summary: {
+          type: "string",
+          description: "New title for the event.",
+        },
+        start_iso: {
+          type: "string",
+          description:
+            "New start time as ISO 8601 with timezone offset.",
+        },
+        end_iso: {
+          type: "string",
+          description:
+            "New end time as ISO 8601 with timezone offset.",
+        },
+        description: {
+          type: "string",
+          description: "New longer notes for the event body.",
+        },
+        attendees: {
+          type: "array",
+          items: { type: "string" },
+          description: "Replacement list of attendee email addresses.",
+        },
+        calendar_id: {
+          type: "string",
+          description: "Optional calendar ID. Defaults to 'primary'.",
+        },
+      },
+      required: ["event_id"],
+    },
+  },
+  {
+    name: "composio_gcal_delete_event",
+    description:
+      "Permanently delete a Google Calendar event by ID. This is irreversible — always confirm with the user before calling, and resolve the event_id via composio_gcal_list_events first if the user only described the event by name.",
+    parameters: {
+      type: "object",
+      properties: {
+        event_id: {
+          type: "string",
+          description: "Google Calendar event ID to delete.",
+        },
+        calendar_id: {
+          type: "string",
+          description: "Optional calendar ID. Defaults to 'primary'.",
+        },
+      },
+      required: ["event_id"],
     },
   },
 ];

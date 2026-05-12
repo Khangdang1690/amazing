@@ -33,6 +33,9 @@ export const env = {
   groqApiKey: process.env.GROQ_API_KEY ?? "",
   groqModel: process.env.GROQ_MODEL ?? "openai/gpt-oss-120b",
   tavilyApiKey: process.env.TAVILY_API_KEY ?? "",
+  composioApiKey: process.env.COMPOSIO_API_KEY ?? "",
+  composioUserId: process.env.COMPOSIO_USER_ID ?? "",
+  composioGcalAuthConfigId: process.env.COMPOSIO_GCAL_AUTH_CONFIG_ID ?? "",
 };
 
 export const SHOP = {
