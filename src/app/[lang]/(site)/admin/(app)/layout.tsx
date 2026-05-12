@@ -8,6 +8,7 @@ import {
   Tag,
   Clock,
   Image as ImageIcon,
+  Sparkles,
 } from "lucide-react";
 import { signOutAction } from "@/app/actions/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -32,6 +33,7 @@ export default async function AdminLayout({
     { href: localePath(lang, "/admin/services"), label: "Services", icon: Tag },
     { href: localePath(lang, "/admin/hours"), label: "Hours", icon: Clock },
     { href: localePath(lang, "/admin/gallery"), label: "Gallery", icon: ImageIcon },
+    { href: localePath(lang, "/admin/agent"), label: "Agent", icon: Sparkles },
   ];
 
   const supabase = await createSupabaseServerClient();

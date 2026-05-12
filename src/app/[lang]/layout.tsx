@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Newsreader, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
-import { Nav } from "@/components/layout/nav";
-import { Footer } from "@/components/layout/footer";
 import { Toaster } from "@/components/ui/sonner";
 import { SHOP } from "@/lib/env";
 import { LOCALES, isLocale } from "@/i18n/config";
@@ -65,8 +63,6 @@ export default async function LangLayout({
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
 
-  const dict = getDictionary(lang);
-
   return (
     <html
       lang={lang}
@@ -74,9 +70,7 @@ export default async function LangLayout({
     >
       <body className="relative flex min-h-full flex-col bg-background text-foreground">
         <div className="grain-overlay" aria-hidden />
-        <Nav locale={lang} messages={dict.nav} />
-        <main className="relative flex-1">{children}</main>
-        <Footer locale={lang} messages={dict.footer} />
+        {children}
         <Toaster richColors closeButton position="top-center" />
       </body>
     </html>
