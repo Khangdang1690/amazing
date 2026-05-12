@@ -35,7 +35,7 @@ export default async function AdminAgentPage({
     <AgentChat
       adminEmail={user.email}
       backHref={localePath(lang, "/admin")}
-      hasApiKey={Boolean(env.geminiApiKey)}
+      hasApiKey={Boolean(env.groqApiKey)}
     />
   );
 }

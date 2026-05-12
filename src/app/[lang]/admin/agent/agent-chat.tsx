@@ -21,10 +21,7 @@ type ChatMessage = {
   toolCalls: ToolCallTrace[];
 };
 
-type HistoryContent = {
-  role: "user" | "model" | "function";
-  parts: unknown;
-};
+type HistoryContent = Record<string, unknown>;
 
 const SUGGESTIONS = [
   "How many appointments do we have today?",
@@ -221,7 +218,7 @@ export function AgentChat({
           <div className="hidden md:block">
             <h1 className="text-sm font-semibold tracking-tight">Admin Agent</h1>
             <p className="text-xs text-muted-foreground">
-              Gemma 4 · streaming · full Supabase access
+              Llama 3.3 70B · Groq · streaming
             </p>
           </div>
         </div>
@@ -243,7 +240,7 @@ export function AgentChat({
 
       {!hasApiKey && (
         <div className="border-b bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          GEMINI_API_KEY is not set. Add it to your env file to enable the agent.
+          GROQ_API_KEY is not set. Add it to your env file to enable the agent.
         </div>
       )}
 

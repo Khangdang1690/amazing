@@ -6,7 +6,7 @@ export type FunctionDeclaration = {
   name: string;
   description: string;
   parameters: {
-    type: "OBJECT";
+    type: "object";
     properties: Record<string, unknown>;
     required?: string[];
   };
@@ -422,25 +422,25 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     description:
       "List appointments with optional filters. Returns up to 200 rows.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
         status: {
-          type: "STRING",
+          type: "string",
           description:
             "One of: confirmed, completed, cancelled, no_show. Omit for all.",
         },
-        barber_id: { type: "STRING", description: "Filter by barber UUID." },
-        service_id: { type: "STRING", description: "Filter by service UUID." },
+        barber_id: { type: "string", description: "Filter by barber UUID." },
+        service_id: { type: "string", description: "Filter by service UUID." },
         from_iso: {
-          type: "STRING",
+          type: "string",
           description: "ISO 8601 lower bound for starts_at, inclusive.",
         },
         to_iso: {
-          type: "STRING",
+          type: "string",
           description: "ISO 8601 upper bound for starts_at, inclusive.",
         },
         limit: {
-          type: "INTEGER",
+          type: "integer",
           description: "Max rows (1-200, default 50).",
         },
       },
@@ -451,11 +451,11 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     description:
       "Count appointments matching optional status and date-range filters.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        status: { type: "STRING" },
-        from_iso: { type: "STRING" },
-        to_iso: { type: "STRING" },
+        status: { type: "string" },
+        from_iso: { type: "string" },
+        to_iso: { type: "string" },
       },
     },
   },
@@ -463,8 +463,8 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "get_appointment",
     description: "Get full details for one appointment by UUID.",
     parameters: {
-      type: "OBJECT",
-      properties: { id: { type: "STRING" } },
+      type: "object",
+      properties: { id: { type: "string" } },
       required: ["id"],
     },
   },
@@ -473,10 +473,10 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     description:
       "Change appointment status. Allowed values: confirmed, completed, cancelled, no_show.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        id: { type: "STRING" },
-        status: { type: "STRING" },
+        id: { type: "string" },
+        status: { type: "string" },
       },
       required: ["id", "status"],
     },
@@ -485,10 +485,10 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "update_appointment_notes",
     description: "Set the internal_notes field on an appointment (admin-only).",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        id: { type: "STRING" },
-        internal_notes: { type: "STRING" },
+        id: { type: "string" },
+        internal_notes: { type: "string" },
       },
       required: ["id", "internal_notes"],
     },
@@ -497,10 +497,10 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "list_barbers",
     description: "List barbers ordered by display_order.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
         active_only: {
-          type: "BOOLEAN",
+          type: "boolean",
           description: "If true, only active barbers.",
         },
       },
@@ -511,15 +511,15 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     description:
       "Create or update a barber. Pass id to update, omit to create. Required for new: name, slug.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        id: { type: "STRING" },
-        name: { type: "STRING" },
-        slug: { type: "STRING" },
-        bio: { type: "STRING" },
-        avatar_url: { type: "STRING" },
-        active: { type: "BOOLEAN" },
-        display_order: { type: "INTEGER" },
+        id: { type: "string" },
+        name: { type: "string" },
+        slug: { type: "string" },
+        bio: { type: "string" },
+        avatar_url: { type: "string" },
+        active: { type: "boolean" },
+        display_order: { type: "integer" },
       },
     },
   },
@@ -527,8 +527,8 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "delete_barber",
     description: "Delete a barber by UUID.",
     parameters: {
-      type: "OBJECT",
-      properties: { id: { type: "STRING" } },
+      type: "object",
+      properties: { id: { type: "string" } },
       required: ["id"],
     },
   },
@@ -536,9 +536,9 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "list_services",
     description: "List services ordered by display_order.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        active_only: { type: "BOOLEAN" },
+        active_only: { type: "boolean" },
       },
     },
   },
@@ -547,15 +547,15 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     description:
       "Create or update a service. Pass id to update. Required: name, duration_minutes, price_cents.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        id: { type: "STRING" },
-        name: { type: "STRING" },
-        description: { type: "STRING" },
-        duration_minutes: { type: "INTEGER" },
-        price_cents: { type: "INTEGER" },
-        active: { type: "BOOLEAN" },
-        display_order: { type: "INTEGER" },
+        id: { type: "string" },
+        name: { type: "string" },
+        description: { type: "string" },
+        duration_minutes: { type: "integer" },
+        price_cents: { type: "integer" },
+        active: { type: "boolean" },
+        display_order: { type: "integer" },
       },
     },
   },
@@ -563,8 +563,8 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "delete_service",
     description: "Delete a service by UUID.",
     parameters: {
-      type: "OBJECT",
-      properties: { id: { type: "STRING" } },
+      type: "object",
+      properties: { id: { type: "string" } },
       required: ["id"],
     },
   },
@@ -572,19 +572,19 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "get_shop_hours",
     description:
       "Read the shop's weekly hours. Returns one row per day_of_week (0=Sun .. 6=Sat).",
-    parameters: { type: "OBJECT", properties: {} },
+    parameters: { type: "object", properties: {} },
   },
   {
     name: "update_shop_hours_day",
     description:
       "Set open_time / close_time for one day_of_week (0-6). open_time/close_time are 'HH:MM' or 'HH:MM:SS'. If closed=true, the day is closed.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        day_of_week: { type: "INTEGER" },
-        open_time: { type: "STRING" },
-        close_time: { type: "STRING" },
-        closed: { type: "BOOLEAN" },
+        day_of_week: { type: "integer" },
+        open_time: { type: "string" },
+        close_time: { type: "string" },
+        closed: { type: "boolean" },
       },
       required: ["day_of_week"],
     },
@@ -594,8 +594,8 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     description:
       "List time-off rows. Pass barber_id to filter (omit for shop-wide too).",
     parameters: {
-      type: "OBJECT",
-      properties: { barber_id: { type: "STRING" } },
+      type: "object",
+      properties: { barber_id: { type: "string" } },
     },
   },
   {
@@ -603,12 +603,12 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     description:
       "Create a time-off block. Omit barber_id for shop-wide. Times in ISO 8601.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        barber_id: { type: "STRING" },
-        starts_at: { type: "STRING" },
-        ends_at: { type: "STRING" },
-        reason: { type: "STRING" },
+        barber_id: { type: "string" },
+        starts_at: { type: "string" },
+        ends_at: { type: "string" },
+        reason: { type: "string" },
       },
       required: ["starts_at", "ends_at"],
     },
@@ -617,24 +617,24 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "delete_time_off",
     description: "Delete a time-off row by UUID.",
     parameters: {
-      type: "OBJECT",
-      properties: { id: { type: "STRING" } },
+      type: "object",
+      properties: { id: { type: "string" } },
       required: ["id"],
     },
   },
   {
     name: "list_gallery_photos",
     description: "List gallery photos.",
-    parameters: { type: "OBJECT", properties: {} },
+    parameters: { type: "object", properties: {} },
   },
   {
     name: "delete_gallery_photo",
     description: "Delete a gallery photo by id and storage_path.",
     parameters: {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        id: { type: "STRING" },
-        storage_path: { type: "STRING" },
+        id: { type: "string" },
+        storage_path: { type: "string" },
       },
       required: ["id", "storage_path"],
     },

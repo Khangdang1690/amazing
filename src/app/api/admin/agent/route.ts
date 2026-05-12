@@ -9,65 +9,66 @@ import {
 
 export const runtime = "nodejs";
 
-type Part =
-  | { text: string }
-  | { functionCall: { name: string; args: Record<string, unknown> } }
+type ToolCall = {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+};
+
+type ChatMessage =
+  | { role: "system"; content: string }
+  | { role: "user"; content: string }
   | {
-      functionResponse: {
-        name: string;
-        response: Record<string, unknown>;
-      };
+      role: "assistant";
+      content?: string | null;
+      tool_calls?: ToolCall[];
+    }
+  | { role: "tool"; tool_call_id: string; content: string };
+
+type ToolCallDelta = {
+  index: number;
+  id?: string;
+  type?: "function";
+  function?: { name?: string; arguments?: string };
+};
+
+type GroqStreamChunk = {
+  choices?: Array<{
+    delta?: {
+      role?: string;
+      content?: string | null;
+      tool_calls?: ToolCallDelta[];
     };
-
-type Content = {
-  role: "user" | "model" | "function";
-  parts: Part[];
-};
-
-type GeminiStreamChunk = {
-  candidates?: Array<{
-    content?: { parts?: Part[] };
-    finishReason?: string;
-    safetyRatings?: Array<{ category?: string; probability?: string }>;
+    finish_reason?: string | null;
   }>;
-  promptFeedback?: {
-    blockReason?: string;
-    blockReasonMessage?: string;
-    safetyRatings?: Array<{ category?: string; probability?: string }>;
-  };
+  error?: { message?: string };
 };
 
-const MODEL = env.geminiModel || "gemma-4-26b-a4b-it";
+const MODEL = env.groqModel || "llama-3.3-70b-versatile";
 const MAX_TOOL_TURNS = 8;
 const DEV = process.env.NODE_ENV === "development";
 
-function systemInstruction(): { parts: { text: string }[] } {
+function systemInstructionText(): string {
   const now = new Date();
-  return {
-    parts: [
-      {
-        text: [
-          `You are the admin agent for ${SHOP.name}, a barbershop.`,
-          `You assist the shop owner with operational tasks via Supabase tools.`,
-          `Current UTC time: ${now.toISOString()}. Shop timezone: ${SHOP.timezone}.`,
-          ``,
-          `Guidelines:`,
-          `- Use tools whenever the user asks about real data (don't guess).`,
-          `- Mutations are irreversible. For destructive actions (delete_*, update_appointment_status to cancelled/no_show, delete_gallery_photo), confirm the target with the user first if it wasn't already specified by id in this turn.`,
-          `- Times stored in DB are UTC. When the user gives a wall-clock time, interpret it in ${SHOP.timezone} and convert to ISO 8601 with the correct offset before calling tools.`,
-          `- day_of_week: 0 = Sunday, 6 = Saturday.`,
-          `- Prices are in cents (price_cents). 1500 = $15.00.`,
-          `- Be concise. Show counts and key fields; don't dump entire rows unless asked.`,
-        ].join("\n"),
-      },
-    ],
-  };
+  return [
+    `You are the admin agent for ${SHOP.name}, a barbershop.`,
+    `You assist the shop owner with operational tasks via Supabase tools.`,
+    `Current UTC time: ${now.toISOString()}. Shop timezone: ${SHOP.timezone}.`,
+    ``,
+    `Guidelines:`,
+    `- Use tools whenever the user asks about real data (don't guess).`,
+    `- Mutations are irreversible. For destructive actions (delete_*, update_appointment_status to cancelled/no_show, delete_gallery_photo), confirm the target with the user first if it wasn't already specified by id in this turn.`,
+    `- Times stored in DB are UTC. When the user gives a wall-clock time, interpret it in ${SHOP.timezone} and convert to ISO 8601 with the correct offset before calling tools.`,
+    `- day_of_week: 0 = Sunday, 6 = Saturday.`,
+    `- Prices are in cents (price_cents). 1500 = $15.00.`,
+    `- Be concise. Show counts and key fields; don't dump entire rows unless asked.`,
+  ].join("\n");
 }
 
 export async function POST(req: NextRequest) {
-  if (!env.geminiApiKey) {
+  if (!env.groqApiKey) {
     return NextResponse.json(
-      { error: "GEMINI_API_KEY is not configured." },
+      { error: "GROQ_API_KEY is not configured." },
       { status: 500 },
     );
   }
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authorized." }, { status: 403 });
   }
 
-  let body: { message?: string; history?: Content[] };
+  let body: { message?: string; history?: ChatMessage[] };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -97,12 +98,18 @@ export async function POST(req: NextRequest) {
   if (!message) {
     return NextResponse.json({ error: "Empty message." }, { status: 400 });
   }
-  const history: Content[] = Array.isArray(body.history) ? body.history : [];
+  const history: ChatMessage[] = Array.isArray(body.history) ? body.history : [];
 
-  const contents: Content[] = [
+  const messages: ChatMessage[] = [
+    { role: "system", content: systemInstructionText() },
     ...history,
-    { role: "user", parts: [{ text: message }] },
+    { role: "user", content: message },
   ];
+
+  const tools = FUNCTION_DECLARATIONS.map((fn) => ({
+    type: "function" as const,
+    function: fn,
+  }));
 
   const encoder = new TextEncoder();
 
@@ -122,26 +129,30 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        let endedWithText = false;
+        let endedWithoutToolCalls = false;
 
         for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
-          const url =
-            `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}` +
-            `:streamGenerateContent?alt=sse&key=${encodeURIComponent(env.geminiApiKey)}`;
-
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              systemInstruction: systemInstruction(),
-              contents,
-              tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
-            }),
-          });
+          const res = await fetch(
+            "https://api.groq.com/openai/v1/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                authorization: `Bearer ${env.groqApiKey}`,
+              },
+              body: JSON.stringify({
+                model: MODEL,
+                stream: true,
+                tool_choice: "auto",
+                messages,
+                tools,
+              }),
+            },
+          );
 
           if (!res.ok || !res.body) {
             const raw = await res.text().catch(() => "");
-            let msg = `Gemini API ${res.status}`;
+            let msg = `Groq API ${res.status}`;
             try {
               const parsed = JSON.parse(raw) as {
                 error?: { message?: string };
@@ -165,22 +176,17 @@ export async function POST(req: NextRequest) {
           const decoder = new TextDecoder();
           let buf = "";
 
-          const turnParts: Part[] = [];
-          let textIdx = -1;
-          let sawAnyPart = false;
+          let assistantText = "";
+          const toolCallsByIndex = new Map<number, ToolCall>();
+          let lastFinishReason: string | null | undefined;
           let eventCount = 0;
-          let lastFinishReason: string | undefined;
-          let lastSafetyRatings:
-            | Array<{ category?: string; probability?: string }>
-            | undefined;
-          let blockReason: string | undefined;
-          let blockReasonMessage: string | undefined;
+          let streamError: string | undefined;
 
           const handlePayload = (payload: string) => {
             if (!payload || payload === "[DONE]") return;
             if (DEV) console.log("[agent:sse]", payload.slice(0, 500));
 
-            let event: GeminiStreamChunk;
+            let event: GroqStreamChunk;
             try {
               event = JSON.parse(payload);
             } catch {
@@ -189,62 +195,44 @@ export async function POST(req: NextRequest) {
             }
             eventCount += 1;
 
-            if (event.promptFeedback?.blockReason) {
-              blockReason = event.promptFeedback.blockReason;
-              blockReasonMessage = event.promptFeedback.blockReasonMessage;
+            if (event.error?.message) {
+              streamError = event.error.message;
+              return;
             }
 
-            const candidate = event.candidates?.[0];
-            if (candidate?.finishReason) {
-              lastFinishReason = candidate.finishReason;
-            }
-            if (candidate?.safetyRatings) {
-              lastSafetyRatings = candidate.safetyRatings;
+            const choice = event.choices?.[0];
+            if (!choice) return;
+            if (choice.finish_reason !== undefined) {
+              lastFinishReason = choice.finish_reason;
             }
 
-            const parts = candidate?.content?.parts;
-            if (!Array.isArray(parts)) return;
+            const delta = choice.delta;
+            if (!delta) return;
 
-            for (const p of parts) {
-              const isThought = (p as { thought?: boolean }).thought === true;
-              if (typeof (p as { text?: unknown }).text === "string") {
-                const delta = (p as { text: string }).text;
-                if (delta.length === 0) continue;
-                if (isThought) continue;
-                if (
-                  textIdx >= 0 &&
-                  "text" in (turnParts[textIdx] as Part)
-                ) {
-                  (turnParts[textIdx] as { text: string }).text += delta;
-                } else {
-                  turnParts.push({ text: delta });
-                  textIdx = turnParts.length - 1;
+            if (typeof delta.content === "string" && delta.content.length > 0) {
+              assistantText += delta.content;
+              send({ type: "text", delta: delta.content });
+            }
+
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index;
+                let acc = toolCallsByIndex.get(idx);
+                if (!acc) {
+                  acc = {
+                    id: tc.id ?? "",
+                    type: "function",
+                    function: { name: "", arguments: "" },
+                  };
+                  toolCallsByIndex.set(idx, acc);
                 }
-                sawAnyPart = true;
-                send({ type: "text", delta });
-              } else if (
-                (p as { functionCall?: { name?: string } }).functionCall?.name
-              ) {
-                const raw = (
-                  p as {
-                    functionCall: {
-                      name: string;
-                      args?: Record<string, unknown>;
-                    };
-                  }
-                ).functionCall;
-                const fc = {
-                  name: String(raw.name),
-                  args: (raw.args ?? {}) as Record<string, unknown>,
-                };
-                turnParts.push({ functionCall: fc });
-                textIdx = -1;
-                sawAnyPart = true;
-                send({
-                  type: "tool_call",
-                  name: fc.name,
-                  args: fc.args,
-                });
+                if (tc.id && !acc.id) acc.id = tc.id;
+                if (tc.function?.name && !acc.function.name) {
+                  acc.function.name = tc.function.name;
+                }
+                if (typeof tc.function?.arguments === "string") {
+                  acc.function.arguments += tc.function.arguments;
+                }
               }
             }
           };
@@ -269,94 +257,106 @@ export async function POST(req: NextRequest) {
               handleBlock(block);
             }
           }
-          // Flush any trailing event that didn't end with \n\n.
           buf += decoder.decode();
           if (buf.trim().length > 0) {
             handleBlock(buf);
           }
 
-          if (!sawAnyPart) {
-            const diag: string[] = [];
-            if (blockReason) {
-              diag.push(`Prompt blocked: blockReason=${blockReason}.`);
-              if (blockReasonMessage) diag.push(blockReasonMessage);
-            } else if (eventCount === 0) {
-              diag.push(
-                `Stream emitted 0 events. The model "${MODEL}" likely rejected the request — possibly because tools + streaming isn't supported on this model. Try non-streaming (\`:generateContent\`) or switch GEMINI_MODEL to a Gemini family model.`,
-              );
-            } else {
-              diag.push(
-                `Stream emitted ${eventCount} event${eventCount === 1 ? "" : "s"} but none contained content parts.`,
-              );
-              if (lastFinishReason) {
-                diag.push(`finishReason=${lastFinishReason}.`);
-              }
-              if (lastSafetyRatings && lastSafetyRatings.length > 0) {
-                const blocked = lastSafetyRatings.filter(
-                  (r) =>
-                    r.probability &&
-                    !["NEGLIGIBLE", "LOW"].includes(r.probability),
-                );
-                if (blocked.length > 0) {
-                  diag.push(
-                    `safety: ${blocked
-                      .map((r) => `${r.category}=${r.probability}`)
-                      .join(", ")}.`,
-                  );
-                }
-              }
-            }
-            const msg = diag.join(" ");
+          if (streamError) {
             if (DEV) {
               console.error(
-                `[agent:sse] empty-parts diagnosis on turn ${turn}: ${msg}`,
+                `[agent:sse] stream error on turn ${turn}: ${streamError}`,
               );
             }
+            send({ type: "error", message: streamError });
+            finish();
+            return;
+          }
+
+          const accumulatedCalls = [...toolCallsByIndex.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .map(([, v]) => v)
+            .filter((c) => c.function.name.length > 0);
+
+          if (eventCount === 0 || (!assistantText && accumulatedCalls.length === 0)) {
+            const msg =
+              eventCount === 0
+                ? `Groq returned 0 chunks on turn ${turn}. Check GROQ_MODEL ("${MODEL}") and GROQ_API_KEY.`
+                : `Groq stream produced ${eventCount} chunk(s) but no content or tool calls. finish_reason=${lastFinishReason ?? "none"}.`;
+            if (DEV) console.error(`[agent:sse] empty-stream: ${msg}`);
             send({ type: "error", message: msg });
             finish();
             return;
           }
 
-          contents.push({ role: "model", parts: turnParts });
-
-          const fnCalls = turnParts.flatMap((p) =>
-            "functionCall" in p ? [p.functionCall] : [],
-          );
-
-          if (fnCalls.length === 0) {
-            endedWithText = true;
+          if (accumulatedCalls.length === 0) {
+            messages.push({
+              role: "assistant",
+              content: assistantText,
+            });
+            endedWithoutToolCalls = true;
             break;
           }
 
-          const responseParts: Part[] = [];
-          for (const fc of fnCalls) {
-            const result: ToolResult = await runTool(fc.name, fc.args ?? {});
+          messages.push({
+            role: "assistant",
+            content: assistantText.length > 0 ? assistantText : null,
+            tool_calls: accumulatedCalls,
+          });
+
+          for (const call of accumulatedCalls) {
+            let args: Record<string, unknown> = {};
+            try {
+              args = call.function.arguments
+                ? (JSON.parse(call.function.arguments) as Record<string, unknown>)
+                : {};
+            } catch (e) {
+              if (DEV) {
+                console.warn(
+                  `[agent:sse] tool args JSON parse failed for ${call.function.name}:`,
+                  call.function.arguments,
+                  e,
+                );
+              }
+            }
+
+            send({
+              type: "tool_call",
+              name: call.function.name,
+              args,
+            });
+
+            const result: ToolResult = await runTool(call.function.name, args);
+
             send({
               type: "tool_result",
-              name: fc.name,
+              name: call.function.name,
               ok: result.ok,
               summary: result.summary,
             });
-            responseParts.push({
-              functionResponse: {
-                name: fc.name,
-                response: result.ok
-                  ? { ok: true, data: result.data ?? null, summary: result.summary }
-                  : { ok: false, error: result.error, summary: result.summary },
-              },
+
+            const payload = result.ok
+              ? { ok: true, data: result.data ?? null, summary: result.summary }
+              : { ok: false, error: result.error, summary: result.summary };
+
+            messages.push({
+              role: "tool",
+              tool_call_id: call.id,
+              content: JSON.stringify(payload),
             });
           }
-          contents.push({ role: "function", parts: responseParts });
         }
 
-        if (!endedWithText) {
+        if (!endedWithoutToolCalls) {
           send({
             type: "text",
             delta:
               "\n\n(I hit the tool-call limit without a final answer. Try a more specific request.)",
           });
         }
-        send({ type: "done", history: contents });
+
+        const historyOut = messages.filter((m) => m.role !== "system");
+        send({ type: "done", history: historyOut });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Stream failed.";
         if (DEV) console.error("[agent:sse] threw:", e);

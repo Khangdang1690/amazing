@@ -30,8 +30,8 @@ export const env = {
     process.env.SHOP_INSTAGRAM ??
     "https://www.instagram.com/tommyamazinghair/",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
-  geminiModel: process.env.GEMINI_MODEL ?? "gemma-4-26b-a4b-it",
+  groqApiKey: process.env.GROQ_API_KEY ?? "",
+  groqModel: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
 };
 
 export const SHOP = {
