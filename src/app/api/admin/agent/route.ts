@@ -44,7 +44,7 @@ type GroqStreamChunk = {
   error?: { message?: string };
 };
 
-const MODEL = env.groqModel || "llama-3.3-70b-versatile";
+const MODEL = env.groqModel || "openai/gpt-oss-120b";
 const MAX_TOOL_TURNS = 8;
 const DEV = process.env.NODE_ENV === "development";
 

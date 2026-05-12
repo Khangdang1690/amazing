@@ -219,7 +219,7 @@ export function AgentChat({
           <div className="hidden md:block">
             <h1 className="text-sm font-semibold tracking-tight">Admin Agent</h1>
             <p className="text-xs text-muted-foreground">
-              Llama 3.3 70B · Groq · streaming
+              GPT-OSS 120B · Groq · streaming
             </p>
           </div>
         </div>
