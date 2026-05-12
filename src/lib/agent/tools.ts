@@ -2,6 +2,7 @@ import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import {
+  gcalBulkCreateEvents,
   gcalCreateEvent,
   gcalListEvents,
   gcalGetEvent,
@@ -477,6 +478,7 @@ const HANDLERS: Record<string, Handler> = {
   delete_gallery_photo: deleteGalleryPhoto,
   web_search: webSearch,
   composio_gcal_create_event: (_s, args) => gcalCreateEvent(args),
+  composio_gcal_bulk_create_events: (_s, args) => gcalBulkCreateEvents(args),
   composio_gcal_list_events: (_s, args) => gcalListEvents(args),
   composio_gcal_get_event: (_s, args) => gcalGetEvent(args),
   composio_gcal_update_event: (_s, args) => gcalUpdateEvent(args),
@@ -778,6 +780,60 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
         },
       },
       required: ["summary", "start_iso", "end_iso"],
+    },
+  },
+  {
+    name: "composio_gcal_bulk_create_events",
+    description:
+      "Create MANY Google Calendar events in ONE batch HTTP request via Composio (up to 1000). Strongly prefer this over calling composio_gcal_create_event in a loop whenever the user asks to add multiple appointments or events to the calendar at once — it's a single round-trip with per-item status, so it's much faster and won't hit the agent's tool-call turn limit.",
+    parameters: {
+      type: "object",
+      properties: {
+        events: {
+          type: "array",
+          description:
+            "List of events to create. Max 1000. Each item is one event.",
+          items: {
+            type: "object",
+            properties: {
+              summary: {
+                type: "string",
+                description: "Event title shown in Google Calendar.",
+              },
+              start_iso: {
+                type: "string",
+                description:
+                  "ISO 8601 start with timezone offset (e.g. 2026-05-13T15:00:00-07:00).",
+              },
+              end_iso: {
+                type: "string",
+                description: "ISO 8601 end with timezone offset.",
+              },
+              description: {
+                type: "string",
+                description: "Optional longer notes shown in the event body.",
+              },
+              attendees: {
+                type: "array",
+                items: { type: "string" },
+                description: "Optional list of attendee email addresses.",
+              },
+            },
+            required: ["summary", "start_iso", "end_iso"],
+          },
+        },
+        calendar_id: {
+          type: "string",
+          description:
+            "Optional calendar ID. Defaults to 'primary' (the connected account's main calendar).",
+        },
+        fail_fast: {
+          type: "boolean",
+          description:
+            "If true, stop after the first 4xx error (except 404 on DELETE). Defaults to false.",
+        },
+      },
+      required: ["events"],
     },
   },
   {
