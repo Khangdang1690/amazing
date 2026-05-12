@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@source "../../node_modules/streamdown/dist/*.js";
+
 @custom-variant dark (&:is(.dark *));
 
 /* =====================================================================
@@ -225,4 +227,78 @@
 .hairline {
   border: 0;
   border-top: 1px solid var(--border);
+}
+
+/* =========================== Chat markdown typography ================= */
+
+@layer components {
+  .prose-chat :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+  .prose-chat :where(h1) { font-size: 1rem; }
+  .prose-chat :where(h2) { font-size: 0.95rem; }
+  .prose-chat :where(h3, h4) { font-size: 0.9rem; }
+  .prose-chat :where(p, ul, ol, pre, table) { margin: 0.4rem 0; }
+  .prose-chat :where(p:first-child, ul:first-child, ol:first-child, table:first-child, pre:first-child, h1:first-child, h2:first-child, h3:first-child) {
+    margin-top: 0;
+  }
+  .prose-chat :where(p:last-child, ul:last-child, ol:last-child, table:last-child, pre:last-child) {
+    margin-bottom: 0;
+  }
+  .prose-chat :where(ul) { list-style: disc; padding-left: 1.25rem; }
+  .prose-chat :where(ol) { list-style: decimal; padding-left: 1.25rem; }
+  .prose-chat :where(li) { margin: 0.15rem 0; }
+  .prose-chat :where(a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+  }
+  .prose-chat :where(code) {
+    background: color-mix(in oklab, var(--foreground) 10%, transparent);
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+  }
+  .prose-chat :where(pre) {
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+  }
+  .prose-chat :where(pre code) {
+    background: transparent;
+    padding: 0;
+  }
+  .prose-chat :where(table) {
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  .prose-chat :where(th, td) {
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.55rem;
+    text-align: left;
+  }
+  .prose-chat :where(th) {
+    background: color-mix(in oklab, var(--foreground) 6%, transparent);
+    font-weight: 600;
+  }
+  .prose-chat :where(blockquote) {
+    border-left: 2px solid var(--border);
+    padding-left: 0.6rem;
+    color: var(--muted-foreground);
+  }
+  .prose-chat :where(hr) {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 0.6rem 0;
+  }
 }

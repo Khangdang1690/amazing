@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type FunctionDeclaration = {
@@ -372,6 +373,80 @@ async function countAppointments(
   return { ok: true, data: { count }, summary: `Count = ${count ?? 0}.` };
 }
 
+type TavilyRawResult = { title?: unknown; url?: unknown; content?: unknown };
+
+async function webSearch(
+  _s: SupabaseClient,
+  args: Args,
+): Promise<ToolResult> {
+  const query = str(args, "query");
+  if (!query) {
+    return {
+      ok: false,
+      error: "query is required.",
+      summary: "web_search failed: query is required.",
+    };
+  }
+  if (!env.tavilyApiKey) {
+    return {
+      ok: false,
+      error: "TAVILY_API_KEY is not configured.",
+      summary: "web_search failed: TAVILY_API_KEY is not configured.",
+    };
+  }
+  const requested = num(args, "max_results") ?? 5;
+  const maxResults = Math.max(1, Math.min(10, Math.trunc(requested)));
+
+  const res = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${env.tavilyApiKey}`,
+    },
+    body: JSON.stringify({
+      query,
+      max_results: maxResults,
+      search_depth: "basic",
+      include_answer: false,
+    }),
+  });
+
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const errJson = (await res.json()) as { detail?: unknown; error?: unknown };
+      const d =
+        typeof errJson.detail === "string"
+          ? errJson.detail
+          : typeof errJson.error === "string"
+            ? errJson.error
+            : undefined;
+      if (d) detail = d;
+    } catch {
+      // body was not JSON; keep HTTP status as the detail
+    }
+    return {
+      ok: false,
+      error: detail,
+      summary: `web_search failed: ${detail}`,
+    };
+  }
+
+  const json = (await res.json()) as { results?: TavilyRawResult[] };
+  const raw = Array.isArray(json.results) ? json.results : [];
+  const results = raw.map((r) => ({
+    title: typeof r.title === "string" ? r.title : "",
+    url: typeof r.url === "string" ? r.url : "",
+    snippet: typeof r.content === "string" ? r.content : "",
+  }));
+
+  return {
+    ok: true,
+    data: { query, results },
+    summary: `Found ${results.length} result${results.length === 1 ? "" : "s"} for "${query}".`,
+  };
+}
+
 type Handler = (s: SupabaseClient, args: Args) => Promise<ToolResult>;
 
 const HANDLERS: Record<string, Handler> = {
@@ -393,6 +468,7 @@ const HANDLERS: Record<string, Handler> = {
   delete_time_off: deleteTimeOff,
   list_gallery_photos: listGalleryPhotos,
   delete_gallery_photo: deleteGalleryPhoto,
+  web_search: webSearch,
 };
 
 export async function runTool(
@@ -637,6 +713,21 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
         storage_path: { type: "string" },
       },
       required: ["id", "storage_path"],
+    },
+  },
+  {
+    name: "web_search",
+    description:
+      "Search the public web. Use for trend questions (e.g. trending haircuts/hairstyles), local market info, or any fact not in the shop's database. Returns the top 5 results with title, url, and snippet.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Search query in plain English.",
+        },
+      },
+      required: ["query"],
     },
   },
 ];

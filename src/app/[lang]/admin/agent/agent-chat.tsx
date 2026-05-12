@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { ArrowLeft, Send, Wrench, Loader2Icon } from "lucide-react";
+import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -394,18 +395,16 @@ function Bubble({
           </Card>
         ))}
 
-        {hasText && (
-          <div
-            className={[
-              "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-              isUser
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-foreground",
-            ].join(" ")}
-          >
-            {message.text}
-          </div>
-        )}
+        {hasText &&
+          (isUser ? (
+            <div className="rounded-2xl bg-primary px-3.5 py-2.5 text-sm leading-relaxed text-primary-foreground whitespace-pre-wrap">
+              {message.text}
+            </div>
+          ) : (
+            <div className="prose-chat rounded-2xl bg-muted px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
+              <Streamdown parseIncompleteMarkdown>{message.text}</Streamdown>
+            </div>
+          ))}
 
         {waiting && !hasText && (
           <div className="inline-flex items-center gap-2 rounded-2xl bg-muted px-3.5 py-2.5 text-sm italic text-muted-foreground">

@@ -61,6 +61,7 @@ function systemInstructionText(): string {
     `- Times stored in DB are UTC. When the user gives a wall-clock time, interpret it in ${SHOP.timezone} and convert to ISO 8601 with the correct offset before calling tools.`,
     `- day_of_week: 0 = Sunday, 6 = Saturday.`,
     `- Prices are in cents (price_cents). 1500 = $15.00.`,
+    `- For questions about trending haircuts/hairstyles, local pricing, or any info not in the shop's database, call web_search with a focused query. Summarize the snippets and cite URLs when relevant.`,
     `- Be concise. Show counts and key fields; don't dump entire rows unless asked.`,
   ].join("\n");
 }

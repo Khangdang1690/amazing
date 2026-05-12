@@ -32,6 +32,7 @@ export const env = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   groqApiKey: process.env.GROQ_API_KEY ?? "",
   groqModel: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
+  tavilyApiKey: process.env.TAVILY_API_KEY ?? "",
 };
 
 export const SHOP = {
