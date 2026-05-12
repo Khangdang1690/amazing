@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "composio:connect": "tsx --env-file=.env.local scripts/composio-bootstrap.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@composio/core": "^0.9.1",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "class-variance-authority": "^0.7.1",
@@ -39,6 +41,7 @@
     "eslint-config-next": "16.2.6",
     "pg": "^8.20.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

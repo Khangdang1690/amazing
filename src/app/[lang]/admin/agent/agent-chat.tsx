@@ -6,6 +6,8 @@ import { ArrowLeft, Send, Wrench, Loader2Icon } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CalendarStatusPill } from "./calendar-status-pill";
+import type { CalendarConnectionStatus } from "@/app/actions/composio";
 
 type Role = "user" | "model";
 
@@ -35,10 +37,12 @@ export function AgentChat({
   adminEmail,
   backHref,
   hasApiKey,
+  initialCalendarStatus,
 }: {
   adminEmail: string;
   backHref: string;
   hasApiKey: boolean;
+  initialCalendarStatus: CalendarConnectionStatus;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [history, setHistory] = useState<HistoryContent[]>([]);
@@ -227,6 +231,7 @@ export function AgentChat({
           <span className="hidden text-xs text-muted-foreground md:inline">
             {adminEmail}
           </span>
+          <CalendarStatusPill initialStatus={initialCalendarStatus} />
           <Button
             type="button"
             variant="outline"

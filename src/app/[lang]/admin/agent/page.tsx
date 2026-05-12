@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { DEFAULT_LOCALE, isLocale, localePath } from "@/i18n/config";
+import { getCalendarConnectionStatus } from "@/app/actions/composio";
+import type { CalendarConnectionStatus } from "@/app/actions/composio";
 import { AgentChat } from "./agent-chat";
 
 export const metadata = { title: "Agent — Admin" };
@@ -31,11 +33,21 @@ export default async function AdminAgentPage({
     redirect(localePath(lang, "/admin/login") + "?error=not_allowed");
   }
 
+  // Best-effort calendar status — never block page render if Composio is down.
+  let initialCalendarStatus: CalendarConnectionStatus = { status: "not_connected" };
+  try {
+    initialCalendarStatus = await getCalendarConnectionStatus();
+  } catch {
+    // Leave as not_connected; the pill will show "Connect" and a manual click
+    // will surface any real errors at that point.
+  }
+
   return (
     <AgentChat
       adminEmail={user.email}
       backHref={localePath(lang, "/admin")}
       hasApiKey={Boolean(env.groqApiKey)}
+      initialCalendarStatus={initialCalendarStatus}
     />
   );
 }
