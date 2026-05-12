@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { upsertServiceAction } from "@/app/actions/admin";
 import type { Service } from "@/lib/types";
 
-export function ServiceForm({ initial }: { initial?: Service }) {
+export function ServiceForm({
+  initial,
+  initialVi,
+}: {
+  initial?: Service;
+  initialVi?: { name?: string; description?: string };
+}) {
   const [state, formAction, pending] = useActionState(
     upsertServiceAction,
     null,
@@ -20,7 +26,7 @@ export function ServiceForm({ initial }: { initial?: Service }) {
         <input type="hidden" name="id" value={initial.id} />
       )}
       <div className="sm:col-span-2">
-        <Label htmlFor={`name-${initial?.id ?? "new"}`}>Name</Label>
+        <Label htmlFor={`name-${initial?.id ?? "new"}`}>Name (EN)</Label>
         <Input
           id={`name-${initial?.id ?? "new"}`}
           name="name"
@@ -29,12 +35,37 @@ export function ServiceForm({ initial }: { initial?: Service }) {
         />
       </div>
       <div className="sm:col-span-2">
-        <Label htmlFor={`desc-${initial?.id ?? "new"}`}>Description</Label>
+        <Label htmlFor={`name-vi-${initial?.id ?? "new"}`}>
+          Tên (VN)
+          <span className="ml-1 text-muted-foreground">— optional</span>
+        </Label>
+        <Input
+          id={`name-vi-${initial?.id ?? "new"}`}
+          name="name_vi"
+          defaultValue={initialVi?.name ?? ""}
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor={`desc-${initial?.id ?? "new"}`}>
+          Description (EN)
+        </Label>
         <Textarea
           id={`desc-${initial?.id ?? "new"}`}
           name="description"
           rows={2}
           defaultValue={initial?.description ?? ""}
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor={`desc-vi-${initial?.id ?? "new"}`}>
+          Mô tả (VN)
+          <span className="ml-1 text-muted-foreground">— optional</span>
+        </Label>
+        <Textarea
+          id={`desc-vi-${initial?.id ?? "new"}`}
+          name="description_vi"
+          rows={2}
+          defaultValue={initialVi?.description ?? ""}
         />
       </div>
       <div>

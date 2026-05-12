@@ -34,6 +34,7 @@ export const barberSchema = z.object({
     .max(80)
     .regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers, and dashes only"),
   bio: z.string().max(1000).optional().or(z.literal("")),
+  bioVi: z.string().max(1000).optional().or(z.literal("")),
   avatarUrl: z.url().optional().or(z.literal("")),
   active: z.boolean(),
   displayOrder: z.coerce.number().int().min(0).default(0),
@@ -42,7 +43,9 @@ export const barberSchema = z.object({
 export const serviceSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().min(1).max(120),
+  nameVi: z.string().max(120).optional().or(z.literal("")),
   description: z.string().max(500).optional().or(z.literal("")),
+  descriptionVi: z.string().max(500).optional().or(z.literal("")),
   durationMinutes: z.coerce.number().int().min(5).max(480),
   priceCents: z.coerce.number().int().min(0),
   active: z.boolean(),

@@ -27,6 +27,53 @@ async function requireAdmin() {
   return user;
 }
 
+// Upsert translation overrides for a single entity. Empty/blank values delete
+// the override so the canonical English column is used instead.
+async function upsertTranslations(
+  entityType: string,
+  entityId: string,
+  values: Record<string, string | null | undefined>,
+  locale: "vi" = "vi",
+): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const upserts: Array<{
+    entity_type: string;
+    entity_id: string;
+    locale: string;
+    field: string;
+    value: string;
+  }> = [];
+  const deletes: string[] = [];
+  for (const [field, raw] of Object.entries(values)) {
+    const v = (raw ?? "").trim();
+    if (v.length > 0) {
+      upserts.push({
+        entity_type: entityType,
+        entity_id: entityId,
+        locale,
+        field,
+        value: v,
+      });
+    } else {
+      deletes.push(field);
+    }
+  }
+  if (upserts.length > 0) {
+    await supabase.from("translations").upsert(upserts, {
+      onConflict: "entity_type,entity_id,locale,field",
+    });
+  }
+  if (deletes.length > 0) {
+    await supabase
+      .from("translations")
+      .delete()
+      .eq("entity_type", entityType)
+      .eq("entity_id", entityId)
+      .eq("locale", locale)
+      .in("field", deletes);
+  }
+}
+
 // -------------------- Auth --------------------
 
 export async function signInAction(
@@ -101,6 +148,7 @@ export async function upsertBarberAction(
     name: formData.get("name"),
     slug: formData.get("slug"),
     bio: formData.get("bio") ?? "",
+    bioVi: formData.get("bio_vi") ?? "",
     avatarUrl: formData.get("avatarUrl") ?? "",
     active: formData.get("active") === "on",
     displayOrder: formData.get("displayOrder") ?? 0,
@@ -118,10 +166,20 @@ export async function upsertBarberAction(
     active: v.active,
     display_order: v.displayOrder,
   };
-  const { error } = v.id
-    ? await supabase.from("barbers").update(row).eq("id", v.id)
-    : await supabase.from("barbers").insert(row);
+  const { data: upserted, error } = v.id
+    ? await supabase
+        .from("barbers")
+        .update(row)
+        .eq("id", v.id)
+        .select("id")
+        .maybeSingle()
+    : await supabase.from("barbers").insert(row).select("id").maybeSingle();
   if (error) return { error: error.message };
+
+  if (upserted?.id) {
+    await upsertTranslations("barber", upserted.id, { bio: v.bioVi });
+  }
+
   revalidatePath("/admin/barbers");
   revalidatePath("/");
   revalidatePath("/book");
@@ -146,7 +204,9 @@ export async function upsertServiceAction(
   const parsed = serviceSchema.safeParse({
     id: formData.get("id") || undefined,
     name: formData.get("name"),
+    nameVi: formData.get("name_vi") ?? "",
     description: formData.get("description") ?? "",
+    descriptionVi: formData.get("description_vi") ?? "",
     durationMinutes: formData.get("durationMinutes"),
     priceCents: formData.get("priceCents"),
     active: formData.get("active") === "on",
@@ -190,6 +250,13 @@ export async function upsertServiceAction(
         barbers.map((b) => ({ barber_id: b.id, service_id: upserted.id })),
       );
     }
+  }
+
+  if (upserted?.id) {
+    await upsertTranslations("service", upserted.id, {
+      name: v.nameVi,
+      description: v.descriptionVi,
+    });
   }
 
   revalidatePath("/admin/services");
@@ -287,6 +354,9 @@ export async function uploadGalleryPhotoAction(
   await requireAdmin();
   const file = formData.get("file") as File | null;
   const caption = ((formData.get("caption") as string | null) ?? "").trim();
+  const captionVi = (
+    (formData.get("caption_vi") as string | null) ?? ""
+  ).trim();
 
   if (!file || file.size === 0) {
     return { error: "Pick a photo." };
@@ -311,9 +381,17 @@ export async function uploadGalleryPhotoAction(
     });
   if (upErr) return { error: upErr.message };
 
-  await supabase
+  const { data: inserted } = await supabase
     .from("gallery_photos")
-    .insert({ storage_path: path, caption: caption || null });
+    .insert({ storage_path: path, caption: caption || null })
+    .select("id")
+    .maybeSingle();
+
+  if (inserted?.id && captionVi.length > 0) {
+    await upsertTranslations("gallery_photo", inserted.id, {
+      caption: captionVi,
+    });
+  }
 
   revalidatePath("/admin/gallery");
   revalidatePath("/gallery");

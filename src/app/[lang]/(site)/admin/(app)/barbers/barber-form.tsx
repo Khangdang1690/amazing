@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { upsertBarberAction } from "@/app/actions/admin";
 import type { Barber } from "@/lib/types";
 
-export function BarberForm({ initial }: { initial?: Barber }) {
+export function BarberForm({
+  initial,
+  initialVi,
+}: {
+  initial?: Barber;
+  initialVi?: { bio?: string };
+}) {
   const [state, formAction, pending] = useActionState(
     upsertBarberAction,
     null,
@@ -41,12 +47,24 @@ export function BarberForm({ initial }: { initial?: Barber }) {
         />
       </div>
       <div className="sm:col-span-2">
-        <Label htmlFor={`bio-${initial?.id ?? "new"}`}>Bio</Label>
+        <Label htmlFor={`bio-${initial?.id ?? "new"}`}>Bio (EN)</Label>
         <Textarea
           id={`bio-${initial?.id ?? "new"}`}
           name="bio"
           rows={2}
           defaultValue={initial?.bio ?? ""}
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor={`bio-vi-${initial?.id ?? "new"}`}>
+          Tiểu sử (VN)
+          <span className="ml-1 text-muted-foreground">— optional</span>
+        </Label>
+        <Textarea
+          id={`bio-vi-${initial?.id ?? "new"}`}
+          name="bio_vi"
+          rows={2}
+          defaultValue={initialVi?.bio ?? ""}
         />
       </div>
       <div>

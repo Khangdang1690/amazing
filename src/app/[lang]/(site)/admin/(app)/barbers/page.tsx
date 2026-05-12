@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Barber } from "@/lib/types";
 import { BarberForm } from "./barber-form";
 import { DeleteBarberButton } from "./delete-barber-button";
+import { getTranslationsFor } from "@/lib/queries";
 
 export const metadata = { title: "Barbers — Admin" };
 
@@ -14,6 +15,10 @@ export default async function BarbersPage() {
     .select("*")
     .order("display_order");
   const barbers: Barber[] = data ?? [];
+
+  const viByBarber = await Promise.all(
+    barbers.map((b) => getTranslationsFor("barber", b.id, "vi")),
+  );
 
   return (
     <div className="space-y-6">
@@ -31,7 +36,7 @@ export default async function BarbersPage() {
       </Card>
 
       <div className="space-y-3">
-        {barbers.map((b) => (
+        {barbers.map((b, i) => (
           <Card key={b.id} className="p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -44,7 +49,7 @@ export default async function BarbersPage() {
               <DeleteBarberButton id={b.id} name={b.name} />
             </div>
             <div className="mt-4">
-              <BarberForm initial={b} />
+              <BarberForm initial={b} initialVi={{ bio: viByBarber[i].bio }} />
             </div>
           </Card>
         ))}

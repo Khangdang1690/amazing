@@ -29,6 +29,50 @@ insert into public.barber_services (barber_id, service_id)
 select b.id, s.id from public.barbers b cross join public.services s
 on conflict do nothing;
 
+-- ---------- Vietnamese translations (services) ----------
+insert into public.translations (entity_type, entity_id, locale, field, value)
+select 'service', s.id, 'vi', 'name', v.vi_name
+from public.services s
+join (values
+  ('Men''s Haircut',         'Cắt tóc nam'),
+  ('Fade',                   'Cắt fade'),
+  ('Kids Cut',               'Cắt tóc trẻ em'),
+  ('Beard Trim',             'Tỉa râu'),
+  ('Hot Towel Shave',        'Cạo râu khăn nóng'),
+  ('Haircut + Beard Combo',  'Combo cắt tóc + tỉa râu'),
+  ('Senior Cut',             'Cắt tóc người cao tuổi')
+) as v(en_name, vi_name) on s.name = v.en_name
+on conflict (entity_type, entity_id, locale, field) do update
+  set value = excluded.value, updated_at = now();
+
+insert into public.translations (entity_type, entity_id, locale, field, value)
+select 'service', s.id, 'vi', 'description', v.vi_desc
+from public.services s
+join (values
+  ('Men''s Haircut',         'Cắt cổ điển, gội, và tạo kiểu.'),
+  ('Fade',                   'Fade trắng, thấp, vừa, hoặc cao. Cạo nhỏ dần chính xác.'),
+  ('Kids Cut',               'Dành cho bé 12 tuổi trở xuống.'),
+  ('Beard Trim',             'Tạo dáng và đường nét cho râu.'),
+  ('Hot Towel Shave',        'Cạo râu dao thẳng truyền thống với khăn nóng.'),
+  ('Haircut + Beard Combo',  'Cắt tóc trọn gói kết hợp tạo dáng râu.'),
+  ('Senior Cut',             'Dành cho khách từ 60 tuổi trở lên.')
+) as v(en_name, vi_desc) on s.name = v.en_name
+on conflict (entity_type, entity_id, locale, field) do update
+  set value = excluded.value, updated_at = now();
+
+-- ---------- Vietnamese translations (barber bios) ----------
+-- Names (Tommy/Andy/Kevin) are proper nouns and left untranslated.
+insert into public.translations (entity_type, entity_id, locale, field, value)
+select 'barber', b.id, 'vi', 'bio', v.vi_bio
+from public.barbers b
+join (values
+  ('tommy', 'Chủ tiệm & thợ cắt tóc bậc thầy. Theo dõi Instagram @tommyamazinghair để xem các tác phẩm mới nhất.'),
+  ('andy',  'Chuyên fade, taper, và cắt tóc cổ điển.'),
+  ('kevin', 'Chuyên cắt tóc trẻ em và tỉa râu.')
+) as v(slug, vi_bio) on b.slug = v.slug
+on conflict (entity_type, entity_id, locale, field) do update
+  set value = excluded.value, updated_at = now();
+
 -- ---------- Shop hours ----------
 -- 0 = Sunday .. 6 = Saturday
 insert into public.shop_hours (day_of_week, open_time, close_time, closed) values

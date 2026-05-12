@@ -25,15 +25,23 @@ export function GalleryUploadForm() {
       ref={ref}
       action={formAction}
       encType="multipart/form-data"
-      className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+      className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
     >
       <div>
         <Label htmlFor="file">Photo</Label>
         <Input id="file" name="file" type="file" accept="image/*" required />
       </div>
       <div>
-        <Label htmlFor="caption">Caption (optional)</Label>
+        <Label htmlFor="caption">Caption (EN, optional)</Label>
         <Input id="caption" name="caption" placeholder="Fresh fade" />
+      </div>
+      <div>
+        <Label htmlFor="caption_vi">Chú thích (VN, optional)</Label>
+        <Input
+          id="caption_vi"
+          name="caption_vi"
+          placeholder="Fade mới"
+        />
       </div>
       <div className="flex items-end">
         <Button type="submit" disabled={pending}>
@@ -41,7 +49,7 @@ export function GalleryUploadForm() {
         </Button>
       </div>
       {state?.error && (
-        <p className="sm:col-span-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="sm:col-span-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
         </p>
       )}

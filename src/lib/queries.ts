@@ -171,6 +171,27 @@ export async function getGalleryPhotosLocalized(
   ] as const);
 }
 
+/**
+ * Fetch the per-locale translation overrides for a single entity.
+ * Returns `{ field: value }` for every row in `public.translations` matching
+ * (entity_type, entity_id, locale). Used by admin forms to prefill VN inputs.
+ */
+export async function getTranslationsFor(
+  entityType: string,
+  entityId: string,
+  locale: Locale,
+): Promise<Record<string, string>> {
+  if (locale === "en") return {};
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from("translations")
+    .select("field, value")
+    .eq("entity_type", entityType)
+    .eq("entity_id", entityId)
+    .eq("locale", locale);
+  return Object.fromEntries((data ?? []).map((t) => [t.field, t.value]));
+}
+
 export function publicPhotoUrl(storagePath: string): string {
   // Allow full URLs (used by mock seed data); otherwise build the public
   // Supabase Storage URL: <SUPABASE_URL>/storage/v1/object/public/gallery/<path>

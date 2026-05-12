@@ -5,6 +5,7 @@ import type { Service } from "@/lib/types";
 import { ServiceForm } from "./service-form";
 import { DeleteServiceButton } from "./delete-service-button";
 import { formatPriceCents, formatDurationMinutes } from "@/lib/utils";
+import { getTranslationsFor } from "@/lib/queries";
 
 export const metadata = { title: "Services — Admin" };
 
@@ -15,6 +16,10 @@ export default async function ServicesAdminPage() {
     .select("*")
     .order("display_order");
   const services: Service[] = data ?? [];
+
+  const viByService = await Promise.all(
+    services.map((s) => getTranslationsFor("service", s.id, "vi")),
+  );
 
   return (
     <div className="space-y-6">
@@ -32,7 +37,7 @@ export default async function ServicesAdminPage() {
       </Card>
 
       <div className="space-y-3">
-        {services.map((s) => (
+        {services.map((s, i) => (
           <Card key={s.id} className="p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -48,7 +53,13 @@ export default async function ServicesAdminPage() {
               <DeleteServiceButton id={s.id} name={s.name} />
             </div>
             <div className="mt-4">
-              <ServiceForm initial={s} />
+              <ServiceForm
+                initial={s}
+                initialVi={{
+                  name: viByService[i].name,
+                  description: viByService[i].description,
+                }}
+              />
             </div>
           </Card>
         ))}
