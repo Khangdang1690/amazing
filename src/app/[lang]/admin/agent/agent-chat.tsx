@@ -29,8 +29,8 @@ type HistoryContent = Record<string, unknown>;
 const SUGGESTIONS = [
   "How many appointments do we have today?",
   "List all active barbers.",
-  "Mark appointment <id> as completed.",
-  "Add a 'Beard Trim' service for $15, 20 minutes.",
+  "Add all of today's appointments to my calendar.",
+  "Add an 'Eyebrow Trim' service for $10, 10 minutes.",
 ];
 
 export function AgentChat({
