@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import {
   getBarberBySlugLocalized,
-  getServicesForBarberLocalized,
+  getServicesForBarber,
 } from "@/lib/queries";
 import {
   getAvailableSlots,
@@ -17,7 +17,7 @@ import { isLocale, localePath, tt } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { BookingPicker } from "./booking-picker";
 
-type SearchParams = Promise<{ service?: string; date?: string }>;
+type SearchParams = Promise<{ date?: string }>;
 
 export async function generateMetadata({
   params,
@@ -44,13 +44,14 @@ export default async function BookBarberPage({
   if (!isLocale(lang)) notFound();
   const t = getDictionary(lang).book;
 
-  const { service: serviceQuery, date: dateQuery } = await searchParams;
+  const { date: dateQuery } = await searchParams;
 
   const barber = await getBarberBySlugLocalized(barberSlug, lang);
   if (!barber) notFound();
 
-  const services = await getServicesForBarberLocalized(barber.id, lang);
-  if (services.length === 0) {
+  // Gate: a barber with no active services is not configured to take work.
+  const offered = await getServicesForBarber(barber.id);
+  if (offered.length === 0) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-24 text-center">
         <h1 className="font-display text-4xl">
@@ -65,9 +66,6 @@ export default async function BookBarberPage({
       </div>
     );
   }
-
-  const selectedService =
-    services.find((s) => s.id === serviceQuery) ?? services[0];
 
   const today = todayInShopTz();
   const selectedDate = dateQuery ?? today;
@@ -84,7 +82,6 @@ export default async function BookBarberPage({
   const slots = await getAvailableSlots({
     barberId: barber.id,
     dateISO: selectedDate,
-    serviceDurationMinutes: selectedService.duration_minutes,
   });
 
   const dayOfWeek = dayOfWeekInShopTz(selectedDate);
@@ -122,14 +119,11 @@ export default async function BookBarberPage({
         locale={lang}
         barberSlug={barber.slug}
         barberId={barber.id}
-        services={services}
-        selectedServiceId={selectedService.id}
         days={days}
         selectedDate={selectedDate}
         slots={slots}
         closed={closed}
         messages={{
-          service: t.service,
           date: t.date,
           shopLocalTime: t.shopLocalTime,
           time: t.time,

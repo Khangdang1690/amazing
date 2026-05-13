@@ -1,5 +1,5 @@
 -- =============================================================================
--- Amazing Hair Design — MOCK demo data (gallery photos + 40 appointments)
+-- Amazing Hair Design — MOCK demo data (gallery photos + appointments)
 --
 -- This is *optional*. Run AFTER supabase/seed.sql (which seeds barbers,
 -- services, and hours). Safe to run multiple times: each block is idempotent.
@@ -8,6 +8,11 @@
 -- and give the rebook flow something to demo (several customers repeat).
 -- Customer names lean Westminster / Little Saigon. Phone numbers use the
 -- 555-01xx fictional prefix so they never collide with a real number.
+--
+-- Appointments now hold 1..N services through the appointment_services
+-- junction table. The pg_temp helpers below insert both the appointment
+-- row and its junction rows in one call, so the bulk inserts below stay
+-- readable.
 --
 -- Run in Supabase SQL editor or via psql.
 -- =============================================================================
@@ -33,6 +38,70 @@ where not exists (
   select 1 from public.gallery_photos where gallery_photos.storage_path = v.storage_path
 );
 
+-- ============ pg_temp helpers ================================================
+-- Defined at session scope so both DO blocks below can call them. Each helper
+-- writes an appointment + its appointment_services rows in a single call.
+
+create or replace function pg_temp.seed_appt(
+  p_barber    uuid,
+  p_service   uuid,
+  p_name      text,
+  p_phone     text,
+  p_start     timestamptz,
+  p_end       timestamptz,
+  p_status    text,
+  p_notes     text default null,
+  p_reminder  timestamptz default null
+) returns void language plpgsql as $$
+declare v_id uuid;
+begin
+  insert into public.appointments
+    (barber_id, customer_name, customer_phone, starts_at, ends_at, status, notes, reminder_sent_at)
+  values (p_barber, p_name, p_phone, p_start, p_end, p_status, p_notes, p_reminder)
+  returning id into v_id;
+
+  insert into public.appointment_services (appointment_id, service_id, position)
+  values (v_id, p_service, 0);
+end; $$;
+
+create or replace function pg_temp.seed_appt_multi(
+  p_barber    uuid,
+  p_services  uuid[],
+  p_name      text,
+  p_phone     text,
+  p_start     timestamptz,
+  p_end       timestamptz,
+  p_status    text,
+  p_notes     text default null,
+  p_reminder  timestamptz default null
+) returns void language plpgsql as $$
+declare v_id uuid;
+begin
+  insert into public.appointments
+    (barber_id, customer_name, customer_phone, starts_at, ends_at, status, notes, reminder_sent_at)
+  values (p_barber, p_name, p_phone, p_start, p_end, p_status, p_notes, p_reminder)
+  returning id into v_id;
+
+  insert into public.appointment_services (appointment_id, service_id, position)
+  select v_id, sid, (ord - 1)::int
+    from unnest(p_services) with ordinality as t(sid, ord);
+end; $$;
+
+-- A scheduled (online) booking under the new model: customer commits to a
+-- start time only. ends_at and services are recorded by staff at serve time.
+create or replace function pg_temp.seed_scheduled(
+  p_barber  uuid,
+  p_name    text,
+  p_phone   text,
+  p_start   timestamptz,
+  p_notes   text default null
+) returns void language plpgsql as $$
+begin
+  insert into public.appointments
+    (barber_id, customer_name, customer_phone, starts_at, ends_at, status, notes)
+  values (p_barber, p_name, p_phone, p_start, null, 'confirmed', p_notes);
+end; $$;
+
 -- ============ Appointments ===================================================
 -- Wrapped in a DO block so we can resolve barber + service UUIDs by slug/name.
 -- Only runs if appointments table is empty (idempotency on re-seed).
@@ -43,9 +112,6 @@ declare
   v_haircut uuid; v_fade uuid; v_kids uuid; v_beard uuid;
   v_shave uuid; v_combo uuid; v_senior uuid;
   v_tz constant text := 'America/Los_Angeles';
-
-  -- Local helper: build a timestamptz at a given calendar offset + clock time
-  -- in shop TZ. Used inline below via `mk(N, 'HH:MM')`.
 begin
   if exists (select 1 from public.appointments) then
     return;
@@ -67,236 +133,173 @@ begin
     raise exception 'Run supabase/seed.sql first — barbers and services must exist.';
   end if;
 
-  -- ---------------------------------------------------------------------------
-  -- Helper macro: cast (current_date - N) at HH:MM in shop TZ to timestamptz.
-  -- We'll inline it for clarity.
-  -- ---------------------------------------------------------------------------
-
   -- ========================== TOMMY — past ==================================
-  insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone,
-     starts_at, ends_at, status, notes, reminder_sent_at)
-  values
-  -- 3 days ago
-  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
+  perform pg_temp.seed_appt(v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
     ((current_date - 3)::timestamp + time '11:00') at time zone v_tz,
     ((current_date - 3)::timestamp + time '11:45') at time zone v_tz,
-    'completed', null, ((current_date - 4)::timestamp + time '11:00') at time zone v_tz),
-  -- 5 days ago
-  (v_tommy, v_combo,   'David Kim',         '+17145550158',
+    'completed', null, ((current_date - 4)::timestamp + time '11:00') at time zone v_tz);
+  perform pg_temp.seed_appt(v_tommy, v_combo,   'David Kim',         '+17145550158',
     ((current_date - 5)::timestamp + time '14:30') at time zone v_tz,
     ((current_date - 5)::timestamp + time '15:20') at time zone v_tz,
-    'completed', null, ((current_date - 6)::timestamp + time '14:30') at time zone v_tz),
-  -- 7 days ago
-  (v_tommy, v_haircut, 'Mike Chen',         '+17145550199',
+    'completed', null, ((current_date - 6)::timestamp + time '14:30') at time zone v_tz);
+  perform pg_temp.seed_appt(v_tommy, v_haircut, 'Mike Chen',         '+17145550199',
     ((current_date - 7)::timestamp + time '10:00') at time zone v_tz,
     ((current_date - 7)::timestamp + time '10:30') at time zone v_tz,
-    'completed', 'Same as last time — number 2 fade.', null),
-  -- 9 days ago
-  (v_tommy, v_fade,    'Bao Nguyen',        '+17145550221',
+    'completed', 'Same as last time — number 2 fade.', null);
+  perform pg_temp.seed_appt(v_tommy, v_fade,    'Bao Nguyen',        '+17145550221',
     ((current_date - 9)::timestamp + time '16:00') at time zone v_tz,
     ((current_date - 9)::timestamp + time '16:45') at time zone v_tz,
-    'completed', null, null),
-  -- 11 days ago
-  (v_tommy, v_shave,   'Jose Garcia',       '+17145550244',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_tommy, v_shave,   'Jose Garcia',       '+17145550244',
     ((current_date - 11)::timestamp + time '18:00') at time zone v_tz,
     ((current_date - 11)::timestamp + time '18:45') at time zone v_tz,
-    'completed', null, null),
-  -- 14 days ago — Tuan again (regular!)
-  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
     ((current_date - 14)::timestamp + time '11:00') at time zone v_tz,
     ((current_date - 14)::timestamp + time '11:45') at time zone v_tz,
-    'completed', null, null),
-  -- 17 days ago
-  (v_tommy, v_fade,    'Hieu Le',           '+17145550267',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_tommy, v_fade,    'Hieu Le',           '+17145550267',
     ((current_date - 17)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 17)::timestamp + time '13:45') at time zone v_tz,
-    'completed', null, null),
-  -- 20 days ago
-  (v_tommy, v_haircut, 'Marcus Johnson',    '+17145550283',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_tommy, v_haircut, 'Marcus Johnson',    '+17145550283',
     ((current_date - 20)::timestamp + time '17:30') at time zone v_tz,
     ((current_date - 20)::timestamp + time '18:00') at time zone v_tz,
-    'completed', null, null),
-  -- 22 days ago
-  (v_tommy, v_fade,    'Andy Vu',           '+17145550311',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_tommy, v_fade,    'Andy Vu',           '+17145550311',
     ((current_date - 22)::timestamp + time '10:30') at time zone v_tz,
     ((current_date - 22)::timestamp + time '11:15') at time zone v_tz,
-    'completed', 'Tight skin fade on the sides.', null),
-  -- 24 days ago
-  (v_tommy, v_beard,   'Brian Nguyen',      '+17145550335',
+    'completed', 'Tight skin fade on the sides.', null);
+  perform pg_temp.seed_appt(v_tommy, v_beard,   'Brian Nguyen',      '+17145550335',
     ((current_date - 24)::timestamp + time '12:30') at time zone v_tz,
     ((current_date - 24)::timestamp + time '12:50') at time zone v_tz,
-    'completed', null, null),
-  -- 26 days ago — David again
-  (v_tommy, v_combo,   'David Kim',         '+17145550158',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_tommy, v_combo,   'David Kim',         '+17145550158',
     ((current_date - 26)::timestamp + time '14:30') at time zone v_tz,
     ((current_date - 26)::timestamp + time '15:20') at time zone v_tz,
-    'completed', null, null),
-  -- 28 days ago — cancelled
-  (v_tommy, v_fade,    'Carlos Rodriguez',  '+17145550349',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_tommy, v_fade,    'Carlos Rodriguez',  '+17145550349',
     ((current_date - 28)::timestamp + time '09:30') at time zone v_tz,
     ((current_date - 28)::timestamp + time '10:15') at time zone v_tz,
     'cancelled', null, null);
 
   -- ========================== TOMMY — upcoming ==============================
-  insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone,
-     starts_at, ends_at, status, notes)
-  values
-  (v_tommy, v_fade,    'Tony Park',         '+17145550372',
-    ((current_date + 1)::timestamp + time '11:00') at time zone v_tz,
-    ((current_date + 1)::timestamp + time '11:45') at time zone v_tz,
-    'confirmed', null),
-  (v_tommy, v_haircut, 'Linh Nguyen',       '+17145550388',
+  -- New model: customers book a start time, no services pre-selected.
+  perform pg_temp.seed_scheduled(v_tommy, 'Tony Park',    '+17145550372',
+    ((current_date + 1)::timestamp + time '11:00') at time zone v_tz);
+  perform pg_temp.seed_scheduled(v_tommy, 'Linh Nguyen',  '+17145550388',
     ((current_date + 3)::timestamp + time '15:00') at time zone v_tz,
-    ((current_date + 3)::timestamp + time '15:30') at time zone v_tz,
-    'confirmed', 'First time here — please ask before going short.'),
-  (v_tommy, v_fade,    'Tuan Pham',         '+17145550142',
+    'First time here — please ask before going short.');
+  perform pg_temp.seed_scheduled(v_tommy, 'Tuan Pham',    '+17145550142',
     ((current_date + 5)::timestamp + time '11:00') at time zone v_tz,
-    ((current_date + 5)::timestamp + time '11:45') at time zone v_tz,
-    'confirmed', 'Same as always.'),
-  (v_tommy, v_combo,   'Ryan Patel',        '+17145550401',
-    ((current_date + 9)::timestamp + time '13:30') at time zone v_tz,
-    ((current_date + 9)::timestamp + time '14:20') at time zone v_tz,
-    'confirmed', null);
+    'Same as always.');
+  perform pg_temp.seed_scheduled(v_tommy, 'Ryan Patel',   '+17145550401',
+    ((current_date + 9)::timestamp + time '13:30') at time zone v_tz);
 
   -- ========================== ANDY — past ===================================
-  insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone,
-     starts_at, ends_at, status, notes, reminder_sent_at)
-  values
-  -- 2 days ago
-  (v_andy, v_fade,    'Khanh Phan',         '+17145550417',
+  perform pg_temp.seed_appt(v_andy, v_fade,    'Khanh Phan',         '+17145550417',
     ((current_date - 2)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 2)::timestamp + time '13:45') at time zone v_tz,
-    'completed', null, ((current_date - 3)::timestamp + time '13:00') at time zone v_tz),
-  -- 4 days ago
-  (v_andy, v_haircut, 'Daniel Ortiz',       '+17145550428',
+    'completed', null, ((current_date - 3)::timestamp + time '13:00') at time zone v_tz);
+  perform pg_temp.seed_appt(v_andy, v_haircut, 'Daniel Ortiz',       '+17145550428',
     ((current_date - 4)::timestamp + time '17:00') at time zone v_tz,
     ((current_date - 4)::timestamp + time '17:30') at time zone v_tz,
-    'completed', null, null),
-  -- 6 days ago — Saturday kids cut
-  (v_andy, v_kids,    'Eric Tran',          '+17145550433',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_andy, v_kids,    'Eric Tran',          '+17145550433',
     ((current_date - 6)::timestamp + time '11:30') at time zone v_tz,
     ((current_date - 6)::timestamp + time '12:00') at time zone v_tz,
-    'completed', '8 years old, wiggly. Bring stickers!', null),
-  -- 8 days ago
-  (v_andy, v_fade,    'Kevin Smith',        '+17145550441',
+    'completed', '8 years old, wiggly. Bring stickers!', null);
+  perform pg_temp.seed_appt(v_andy, v_fade,    'Kevin Smith',        '+17145550441',
     ((current_date - 8)::timestamp + time '18:30') at time zone v_tz,
     ((current_date - 8)::timestamp + time '19:15') at time zone v_tz,
-    'completed', null, null),
-  -- 10 days ago
-  (v_andy, v_haircut, 'Hoang Le',           '+17145550457',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_andy, v_haircut, 'Hoang Le',           '+17145550457',
     ((current_date - 10)::timestamp + time '14:00') at time zone v_tz,
     ((current_date - 10)::timestamp + time '14:30') at time zone v_tz,
-    'completed', null, null),
-  -- 13 days ago — Khanh again
-  (v_andy, v_fade,    'Khanh Phan',         '+17145550417',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_andy, v_fade,    'Khanh Phan',         '+17145550417',
     ((current_date - 13)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 13)::timestamp + time '13:45') at time zone v_tz,
-    'completed', null, null),
-  -- 16 days ago — no-show
-  (v_andy, v_shave,   'Anthony Diaz',       '+17145550466',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_andy, v_shave,   'Anthony Diaz',       '+17145550466',
     ((current_date - 16)::timestamp + time '16:30') at time zone v_tz,
     ((current_date - 16)::timestamp + time '17:15') at time zone v_tz,
-    'no_show', null, null),
-  -- 19 days ago
-  (v_andy, v_haircut, 'Vincent Le',         '+17145550478',
+    'no_show', null, null);
+  perform pg_temp.seed_appt(v_andy, v_haircut, 'Vincent Le',         '+17145550478',
     ((current_date - 19)::timestamp + time '12:00') at time zone v_tz,
     ((current_date - 19)::timestamp + time '12:30') at time zone v_tz,
-    'completed', null, null),
-  -- 23 days ago
-  (v_andy, v_fade,    'Steven Chen',        '+17145550481',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_andy, v_fade,    'Steven Chen',        '+17145550481',
     ((current_date - 23)::timestamp + time '17:00') at time zone v_tz,
     ((current_date - 23)::timestamp + time '17:45') at time zone v_tz,
-    'completed', null, null),
-  -- 25 days ago
-  (v_andy, v_kids,    'Justin Pham',        '+17145550492',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_andy, v_kids,    'Justin Pham',        '+17145550492',
     ((current_date - 25)::timestamp + time '10:00') at time zone v_tz,
     ((current_date - 25)::timestamp + time '10:30') at time zone v_tz,
     'completed', null, null);
 
   -- ========================== ANDY — upcoming ===============================
-  insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone,
-     starts_at, ends_at, status, notes)
-  values
-  (v_andy, v_haircut, 'Daniel Ortiz',       '+17145550428',
-    ((current_date + 2)::timestamp + time '17:00') at time zone v_tz,
-    ((current_date + 2)::timestamp + time '17:30') at time zone v_tz,
-    'confirmed', null),
-  (v_andy, v_fade,    'Khanh Phan',         '+17145550417',
-    ((current_date + 6)::timestamp + time '13:00') at time zone v_tz,
-    ((current_date + 6)::timestamp + time '13:45') at time zone v_tz,
-    'confirmed', null),
-  (v_andy, v_kids,    'Eric Tran',          '+17145550433',
+  perform pg_temp.seed_scheduled(v_andy, 'Daniel Ortiz', '+17145550428',
+    ((current_date + 2)::timestamp + time '17:00') at time zone v_tz);
+  perform pg_temp.seed_scheduled(v_andy, 'Khanh Phan',   '+17145550417',
+    ((current_date + 6)::timestamp + time '13:00') at time zone v_tz);
+  perform pg_temp.seed_scheduled(v_andy, 'Eric Tran',    '+17145550433',
     ((current_date + 8)::timestamp + time '11:30') at time zone v_tz,
-    ((current_date + 8)::timestamp + time '12:00') at time zone v_tz,
-    'confirmed', 'Birthday haircut!');
+    'Birthday haircut!');
 
   -- ========================== KEVIN — past ==================================
-  insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone,
-     starts_at, ends_at, status, notes, reminder_sent_at)
-  values
-  -- 1 day ago
-  (v_kevin, v_beard,   'Anh Vu',            '+17145550502',
+  perform pg_temp.seed_appt(v_kevin, v_beard,   'Anh Vu',            '+17145550502',
     ((current_date - 1)::timestamp + time '15:00') at time zone v_tz,
     ((current_date - 1)::timestamp + time '15:20') at time zone v_tz,
-    'completed', null, ((current_date - 2)::timestamp + time '15:00') at time zone v_tz),
-  -- 3 days ago
-  (v_kevin, v_kids,    'William Park',      '+17145550516',
+    'completed', null, ((current_date - 2)::timestamp + time '15:00') at time zone v_tz);
+  perform pg_temp.seed_appt(v_kevin, v_kids,    'William Park',      '+17145550516',
     ((current_date - 3)::timestamp + time '10:30') at time zone v_tz,
     ((current_date - 3)::timestamp + time '11:00') at time zone v_tz,
-    'completed', null, null),
-  -- 6 days ago — cancelled
-  (v_kevin, v_haircut, 'Christopher Tran',  '+17145550533',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_kevin, v_haircut, 'Christopher Tran',  '+17145550533',
     ((current_date - 6)::timestamp + time '13:00') at time zone v_tz,
     ((current_date - 6)::timestamp + time '13:30') at time zone v_tz,
-    'cancelled', null, null),
-  -- 8 days ago
-  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
+    'cancelled', null, null);
+  perform pg_temp.seed_appt(v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
     ((current_date - 8)::timestamp + time '09:30') at time zone v_tz,
     ((current_date - 8)::timestamp + time '10:00') at time zone v_tz,
-    'completed', 'Henry — regular. Just a clean-up.', null),
-  -- 12 days ago
-  (v_kevin, v_fade,    'Phong Doan',        '+17145550551',
+    'completed', 'Henry — regular. Just a clean-up.', null);
+  perform pg_temp.seed_appt(v_kevin, v_fade,    'Phong Doan',        '+17145550551',
     ((current_date - 12)::timestamp + time '17:30') at time zone v_tz,
     ((current_date - 12)::timestamp + time '18:15') at time zone v_tz,
-    'completed', null, null),
-  -- 15 days ago — Anh again
-  (v_kevin, v_beard,   'Anh Vu',            '+17145550502',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_kevin, v_beard,   'Anh Vu',            '+17145550502',
     ((current_date - 15)::timestamp + time '15:00') at time zone v_tz,
     ((current_date - 15)::timestamp + time '15:20') at time zone v_tz,
-    'completed', null, null),
-  -- 18 days ago
-  (v_kevin, v_kids,    'Calvin Vo',         '+17145550569',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_kevin, v_kids,    'Calvin Vo',         '+17145550569',
     ((current_date - 18)::timestamp + time '11:00') at time zone v_tz,
     ((current_date - 18)::timestamp + time '11:30') at time zone v_tz,
-    'completed', null, null),
-  -- 22 days ago — Henry again
-  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
+    'completed', null, null);
+  perform pg_temp.seed_appt(v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
     ((current_date - 22)::timestamp + time '09:30') at time zone v_tz,
     ((current_date - 22)::timestamp + time '10:00') at time zone v_tz,
     'completed', null, null);
 
   -- ========================== KEVIN — upcoming ==============================
-  insert into public.appointments
-    (barber_id, service_id, customer_name, customer_phone,
-     starts_at, ends_at, status, notes)
-  values
-  (v_kevin, v_senior,  'Henry Nguyen',      '+17145550548',
-    ((current_date + 4)::timestamp + time '09:30') at time zone v_tz,
-    ((current_date + 4)::timestamp + time '10:00') at time zone v_tz,
-    'confirmed', null),
-  (v_kevin, v_fade,    'Phong Doan',        '+17145550551',
-    ((current_date + 7)::timestamp + time '17:30') at time zone v_tz,
-    ((current_date + 7)::timestamp + time '18:15') at time zone v_tz,
-    'confirmed', null),
-  (v_kevin, v_beard,   'Anh Vu',            '+17145550502',
-    ((current_date + 12)::timestamp + time '15:00') at time zone v_tz,
-    ((current_date + 12)::timestamp + time '15:20') at time zone v_tz,
-    'confirmed', null);
+  perform pg_temp.seed_scheduled(v_kevin, 'Henry Nguyen', '+17145550548',
+    ((current_date + 4)::timestamp + time '09:30') at time zone v_tz);
+  perform pg_temp.seed_scheduled(v_kevin, 'Phong Doan',   '+17145550551',
+    ((current_date + 7)::timestamp + time '17:30') at time zone v_tz);
+  perform pg_temp.seed_scheduled(v_kevin, 'Anh Vu',       '+17145550502',
+    ((current_date + 12)::timestamp + time '15:00') at time zone v_tz);
+
+  -- ========================== RUNNING LATE demos ===========================
+  -- Two scheduled appointments whose start time has already passed but the
+  -- barber hasn't served them yet. These show up in the unified Queue panel
+  -- as "Late · scheduled HH:MM" so QA has data on first load.
+  -- Note: barber_id + starts_at must be unique among non-cancelled rows so
+  -- these times are off-grid relative to the upcoming bookings above.
+  perform pg_temp.seed_scheduled(v_tommy, 'Owen Park',  '+17145550869',
+    now() - interval '15 minutes',
+    'Booked online a week ago.');
+  perform pg_temp.seed_scheduled(v_andy,  'Jay Pham',   '+17145550894',
+    now() - interval '8 minutes');
 
   raise notice 'Mock seed: % story appointments inserted',
     (select count(*) from public.appointments);
@@ -498,17 +501,14 @@ begin
         continue;
       end if;
 
-      insert into public.appointments
-        (barber_id, service_id, customer_name, customer_phone,
-         starts_at, ends_at, status, notes, reminder_sent_at)
-      values
-        (v_barber_id, v_service_id,
-         v_names[v_cust_idx], v_phones[v_cust_idx],
-         v_starts_at, v_ends_at, v_status, v_note,
-         case when v_status = 'completed'
-              then v_starts_at - interval '24 hours'
-              else null
-         end);
+      perform pg_temp.seed_appt(
+        v_barber_id, v_service_id,
+        v_names[v_cust_idx], v_phones[v_cust_idx],
+        v_starts_at, v_ends_at, v_status, v_note,
+        case when v_status = 'completed'
+             then v_starts_at - interval '24 hours'
+             else null
+        end);
       v_inserted_past := v_inserted_past + 1;
     end loop;
   end loop;
@@ -560,24 +560,22 @@ begin
 
       v_note := v_notes_pool[1 + floor(random() * array_length(v_notes_pool, 1))::int];
 
+      -- New model: future scheduled bookings collide by exact start time only
+      -- (services + duration are decided by staff at serve time).
       if exists (
         select 1 from public.appointments
          where barber_id = v_barber_id
            and status <> 'cancelled'
-           and tstzrange(starts_at, ends_at, '[)') &&
-               tstzrange(v_starts_at, v_ends_at, '[)')
+           and starts_at = v_starts_at
       ) then
         v_skipped := v_skipped + 1;
         continue;
       end if;
 
-      insert into public.appointments
-        (barber_id, service_id, customer_name, customer_phone,
-         starts_at, ends_at, status, notes)
-      values
-        (v_barber_id, v_service_id,
-         v_names[v_cust_idx], v_phones[v_cust_idx],
-         v_starts_at, v_ends_at, 'confirmed', v_note);
+      perform pg_temp.seed_scheduled(
+        v_barber_id,
+        v_names[v_cust_idx], v_phones[v_cust_idx],
+        v_starts_at, v_note);
       v_inserted_future := v_inserted_future + 1;
     end loop;
   end loop;

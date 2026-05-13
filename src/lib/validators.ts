@@ -6,15 +6,28 @@ export const phoneSchema = z
   .min(7, "Phone number is too short")
   .max(20, "Phone number is too long");
 
+export const serviceIdsSchema = z
+  .array(z.uuid())
+  .min(1, "Pick at least one service")
+  .max(6, "Pick at most 6 services");
+
 export const createBookingSchema = z.object({
   barberId: z.uuid(),
-  serviceId: z.uuid(),
   startsAt: z.iso.datetime({ offset: true }),
   customerName: z.string().min(1, "Name is required").max(120),
   customerPhone: phoneSchema,
   notes: z.string().max(500).optional().or(z.literal("")),
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
+
+export const createWalkinSchema = z.object({
+  barberId: z.uuid(),
+  serviceIds: serviceIdsSchema,
+  customerName: z.string().min(1, "Name is required").max(120),
+  customerPhone: phoneSchema.optional().or(z.literal("")),
+  notes: z.string().max(500).optional().or(z.literal("")),
+});
+export type CreateWalkinInput = z.infer<typeof createWalkinSchema>;
 
 export const requestOtpSchema = z.object({
   phone: phoneSchema,

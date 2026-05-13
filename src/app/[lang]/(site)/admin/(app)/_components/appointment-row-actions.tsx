@@ -15,7 +15,7 @@ export function AppointmentRowActions({
 }) {
   const [pending, startTransition] = useTransition();
 
-  function set(status: AppointmentStatus) {
+  function set(status: "completed" | "cancelled" | "no_show" | "confirmed") {
     startTransition(async () => {
       await updateAppointmentStatusAction(appointmentId, status);
     });

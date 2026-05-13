@@ -1,13 +1,22 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Calendar, MapPin, Phone } from "lucide-react";
+import { addMinutes } from "date-fns";
 import { formatPriceCents, formatDurationMinutes } from "@/lib/utils";
 import { SHOP } from "@/lib/env";
 import { formatPhone } from "@/lib/phone";
 import { formatDateTimeLabel } from "@/lib/availability";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  flattenAppointmentServices,
+  localizeServices,
+} from "@/lib/queries";
 import { isLocale, localePath, tt } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
+
+// Customers no longer commit to a duration at booking; the calendar event
+// uses this footprint so the block isn't open-ended in their calendar app.
+const CALENDAR_EVENT_DEFAULT_MINUTES = 30;
 
 export async function generateMetadata({
   params,
@@ -39,7 +48,9 @@ export default async function BookingSuccessPage({
   const { data: appt } = await supabase
     .from("appointments")
     .select(
-      `id, customer_name, starts_at, ends_at, barbers ( name, slug ), services ( name, duration_minutes, price_cents )`,
+      `id, customer_name, starts_at, ends_at,
+       barbers ( name, slug ),
+       appointment_services ( position, services ( id, name, duration_minutes, price_cents ) )`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -47,14 +58,31 @@ export default async function BookingSuccessPage({
   if (!appt) redirect(localePath(lang, "/"));
 
   const barber = Array.isArray(appt.barbers) ? appt.barbers[0] : appt.barbers;
-  const service = Array.isArray(appt.services) ? appt.services[0] : appt.services;
+  const rawServices = flattenAppointmentServices(appt.appointment_services);
+  const services = await localizeServices(rawServices, lang);
+  const hasServices = services.length > 0;
+  const totalDuration = services.reduce(
+    (sum, s) => sum + (s.duration_minutes ?? 0),
+    0,
+  );
+  const totalPrice = services.reduce(
+    (sum, s) => sum + (s.price_cents ?? 0),
+    0,
+  );
+  const serviceLabel = hasServices
+    ? services.map((s) => s.name).join(", ")
+    : t.serviceTBD;
 
   const start = new Date(appt.starts_at);
-  const end = new Date(appt.ends_at);
+  // ends_at is set on completion; before that, use a fixed footprint just so
+  // the customer's calendar event isn't open-ended.
+  const end = appt.ends_at
+    ? new Date(appt.ends_at)
+    : addMinutes(start, CALENDAR_EVENT_DEFAULT_MINUTES);
   const fmt = (d: Date) =>
     d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-    tt(t.calendarTitle, { shop: SHOP.name, service: service?.name ?? "" }),
+    tt(t.calendarTitle, { shop: SHOP.name, service: hasServices ? serviceLabel : "Appointment" }),
   )}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent(
     tt(t.calendarDetails, {
       name: barber?.name ?? "",
@@ -86,19 +114,19 @@ export default async function BookingSuccessPage({
         <dt className="eyebrow">{t.barber}</dt>
         <dd className="font-display text-2xl md:text-3xl">{barber?.name}</dd>
         <dt className="eyebrow">{t.service}</dt>
-        <dd className="font-display text-2xl md:text-3xl">
-          {service?.name}{" "}
-          {service && (
+        <dd className={hasServices ? "font-display text-2xl md:text-3xl" : "text-base text-muted-foreground"}>
+          {serviceLabel}
+          {hasServices && (
             <span className="ml-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {formatDurationMinutes(service.duration_minutes)}
+              {formatDurationMinutes(totalDuration)}
             </span>
           )}
         </dd>
-        {service && (
+        {hasServices && (
           <>
             <dt className="eyebrow">{t.price}</dt>
             <dd className="num text-2xl md:text-3xl">
-              {formatPriceCents(service.price_cents)}
+              {formatPriceCents(totalPrice)}
             </dd>
           </>
         )}

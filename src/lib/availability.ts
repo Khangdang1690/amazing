@@ -17,16 +17,17 @@ export type Slot = {
 };
 
 /**
- * Generate bookable slots for one barber on one calendar date (in shop TZ),
- * given a service duration. Excludes existing appointments and time-off.
+ * Generate bookable slots for one barber on one calendar date (in shop TZ).
+ * A slot is taken iff there's already a non-cancelled appointment at that
+ * exact start time for this barber. Service duration is no longer the
+ * customer's responsibility - staff records the actual end at serve time.
  */
 export async function getAvailableSlots(args: {
   barberId: string;
   /** YYYY-MM-DD in shop timezone */
   dateISO: string;
-  serviceDurationMinutes: number;
 }): Promise<Slot[]> {
-  const { barberId, dateISO, serviceDurationMinutes } = args;
+  const { barberId, dateISO } = args;
   const tz = env.shopTimezone;
 
   const dayStartUTC = fromZonedTime(`${dateISO}T00:00:00`, tz);
@@ -56,9 +57,9 @@ export async function getAvailableSlots(args: {
 
   const { data: appts } = await supabase
     .from("appointments")
-    .select("starts_at, ends_at, status")
+    .select("starts_at, status")
     .eq("barber_id", barberId)
-    .neq("status", "cancelled")
+    .not("status", "in", "(cancelled,walkin)")
     .gte("starts_at", dayStartUTC.toISOString())
     .lte("starts_at", dayEndUTC.toISOString());
 
@@ -69,29 +70,25 @@ export async function getAvailableSlots(args: {
     .lt("starts_at", dayEndUTC.toISOString())
     .gt("ends_at", dayStartUTC.toISOString());
 
-  const busy: Array<{ start: Date; end: Date }> = [
-    ...(appts ?? []).map((a) => ({
-      start: new Date(a.starts_at),
-      end: new Date(a.ends_at),
-    })),
-    ...(offs ?? []).map((o) => ({
-      start: new Date(o.starts_at),
-      end: new Date(o.ends_at),
-    })),
-  ];
+  // Slot is taken iff some non-cancelled appointment has exactly this start.
+  const taken = new Set(
+    (appts ?? []).map((a) => new Date(a.starts_at).getTime()),
+  );
+  const offRanges = (offs ?? []).map((o) => ({
+    start: new Date(o.starts_at).getTime(),
+    end: new Date(o.ends_at).getTime(),
+  }));
 
   const slots: Slot[] = [];
   const now = new Date();
   let cursor = openUTC;
 
-  while (true) {
-    const slotEnd = addMinutes(cursor, serviceDurationMinutes);
-    if (slotEnd.getTime() > closeUTC.getTime()) break;
+  while (cursor.getTime() < closeUTC.getTime()) {
+    const t = cursor.getTime();
+    const inPast = t <= now.getTime();
+    const inTimeOff = offRanges.some((r) => t >= r.start && t < r.end);
 
-    const overlaps = busy.some((b) => cursor < b.end && slotEnd > b.start);
-    const inPast = cursor.getTime() <= now.getTime();
-
-    if (!overlaps && !inPast) {
+    if (!taken.has(t) && !inPast && !inTimeOff) {
       slots.push({
         startsAt: cursor.toISOString(),
         label: formatInTimeZone(cursor, tz, "h:mm a"),
@@ -99,7 +96,6 @@ export async function getAvailableSlots(args: {
     }
 
     cursor = addMinutes(cursor, SLOT_GRID_MINUTES);
-    if (cursor.getTime() >= closeUTC.getTime()) break;
   }
 
   return slots;

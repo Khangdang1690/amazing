@@ -2,6 +2,10 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  flattenAppointmentServices,
+  localizeServices,
+} from "@/lib/queries";
 import { formatDateTimeLabel } from "@/lib/availability";
 import { formatPhone } from "@/lib/phone";
 import { isLocale, localePath, tt } from "@/i18n/config";
@@ -66,19 +70,27 @@ export default async function MyBookingsPage({
   const { data: appts } = await supabase
     .from("appointments")
     .select(
-      `id, starts_at, status, barbers ( name, slug ), services ( id, name, duration_minutes, price_cents )`,
+      `id, starts_at, status,
+       barbers ( name, slug ),
+       appointment_services ( position, services ( id, name, duration_minutes, price_cents ) )`,
     )
     .eq("customer_phone", phone)
     .order("starts_at", { ascending: false })
     .limit(20);
 
-  const list = (appts ?? []).map((a) => ({
-    id: a.id,
-    starts_at: a.starts_at,
-    status: a.status as "confirmed" | "completed" | "cancelled" | "no_show",
-    barber: Array.isArray(a.barbers) ? a.barbers[0] : a.barbers,
-    service: Array.isArray(a.services) ? a.services[0] : a.services,
-  }));
+  const list = await Promise.all(
+    (appts ?? []).map(async (a) => {
+      const rawServices = flattenAppointmentServices(a.appointment_services);
+      const services = await localizeServices(rawServices, lang);
+      return {
+        id: a.id,
+        starts_at: a.starts_at,
+        status: a.status as "confirmed" | "completed" | "cancelled" | "no_show",
+        barber: Array.isArray(a.barbers) ? a.barbers[0] : a.barbers,
+        services,
+      };
+    }),
+  );
 
   const nowMs = new Date().getTime();
   const upcoming = list.filter(
@@ -140,7 +152,9 @@ export default async function MyBookingsPage({
                     {formatDateTimeLabel(a.starts_at, lang)}
                   </div>
                   <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {a.service?.name} · {a.barber?.name}
+                    {a.services.length > 0
+                      ? `${a.services.map((s) => s.name).join(", ")} · ${a.barber?.name ?? ""}`
+                      : `with ${a.barber?.name ?? ""}`}
                   </div>
                 </div>
                 <span className="border border-copper px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-copper">
@@ -170,12 +184,14 @@ export default async function MyBookingsPage({
                     {formatDateTimeLabel(a.starts_at, lang)}
                   </div>
                   <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {a.service?.name} · {a.barber?.name} · {statusLabel(a.status)}
+                    {a.services.length > 0
+                      ? `${a.services.map((s) => s.name).join(", ")} · ${a.barber?.name} · ${statusLabel(a.status)}`
+                      : `${a.barber?.name} · ${statusLabel(a.status)}`}
                   </div>
                 </div>
-                {a.barber?.slug && a.service?.id && (
+                {a.barber?.slug && (
                   <Link
-                    href={`${localePath(lang, `/book/${a.barber.slug}`)}?service=${a.service.id}`}
+                    href={localePath(lang, `/book/${a.barber.slug}`)}
                     className="inline-flex items-center gap-2 border border-border px-4 py-2 text-[11px] uppercase tracking-[0.18em] hover:border-foreground"
                   >
                     {tt(t.rebookWith, { name: a.barber.name })}

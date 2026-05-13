@@ -9,7 +9,10 @@ import {
   serviceSchema,
   hoursSchema,
   timeOffSchema,
+  createWalkinSchema,
+  serviceIdsSchema,
 } from "@/lib/validators";
+import { normalizeUSPhone } from "@/lib/phone";
 import { env } from "@/lib/env";
 
 async function requireAdmin() {
@@ -134,6 +137,153 @@ export async function updateAppointmentNotesAction(
     .update({ internal_notes: internalNotes })
     .eq("id", appointmentId);
   revalidatePath("/admin/appointments");
+}
+
+// -------------------- Walk-ins --------------------
+
+const WALKIN_PLACEHOLDER_MINUTES = 15;
+
+export async function createWalkinAction(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string } | null> {
+  await requireAdmin();
+
+  const rawPhone = ((formData.get("customerPhone") as string | null) ?? "").trim();
+  const normalizedPhone =
+    rawPhone.length > 0 ? normalizeUSPhone(rawPhone) : null;
+  if (rawPhone.length > 0 && normalizedPhone === null) {
+    return { error: "Enter a valid US phone number, or leave it blank." };
+  }
+
+  const serviceIds = formData
+    .getAll("serviceIds")
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter((v) => v.length > 0);
+
+  const parsed = createWalkinSchema.safeParse({
+    barberId: formData.get("barberId"),
+    serviceIds,
+    customerName: ((formData.get("customerName") as string | null) ?? "").trim(),
+    customerPhone: normalizedPhone ?? "",
+    notes: ((formData.get("notes") as string | null) ?? "").trim(),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const v = parsed.data;
+
+  const supabase = createSupabaseAdminClient();
+
+  // Sum durations so the placeholder ends_at roughly reflects expected time
+  // on the chair (still ignored by availability since status='walkin').
+  const { data: serviceRows } = await supabase
+    .from("services")
+    .select("id, duration_minutes, active")
+    .in("id", v.serviceIds);
+  const fetched = serviceRows ?? [];
+  if (fetched.length !== v.serviceIds.length || fetched.some((s) => !s.active)) {
+    return { error: "One or more services are no longer available." };
+  }
+  const totalMinutes =
+    fetched.reduce((sum, s) => sum + s.duration_minutes, 0) ||
+    WALKIN_PLACEHOLDER_MINUTES;
+
+  const now = new Date();
+  const placeholderEnd = new Date(now.getTime() + totalMinutes * 60 * 1000);
+
+  const { data: inserted, error: apptError } = await supabase
+    .from("appointments")
+    .insert({
+      barber_id: v.barberId,
+      customer_name: v.customerName,
+      customer_phone: normalizedPhone,
+      starts_at: now.toISOString(),
+      ends_at: placeholderEnd.toISOString(),
+      status: "walkin",
+      notes: v.notes || null,
+    })
+    .select("id")
+    .single();
+  if (apptError || !inserted) return { error: apptError?.message ?? "Insert failed" };
+
+  const { error: junctionError } = await supabase
+    .from("appointment_services")
+    .insert(
+      v.serviceIds.map((sid, idx) => ({
+        appointment_id: inserted.id,
+        service_id: sid,
+        position: idx,
+      })),
+    );
+  if (junctionError) {
+    // Roll back the parent row so we don't leave an empty walk-in.
+    await supabase.from("appointments").delete().eq("id", inserted.id);
+    return { error: junctionError.message };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/appointments");
+  return null;
+}
+
+export async function markWalkinServedAction(
+  appointmentId: string,
+): Promise<void> {
+  await requireAdmin();
+  const supabase = createSupabaseAdminClient();
+  await supabase
+    .from("appointments")
+    .update({ status: "completed", ends_at: new Date().toISOString() })
+    .eq("id", appointmentId)
+    .eq("status", "walkin");
+  revalidatePath("/admin");
+  revalidatePath("/admin/appointments");
+}
+
+export async function serveScheduledAppointmentAction(
+  appointmentId: string,
+  serviceIds: string[],
+): Promise<{ error?: string } | null> {
+  await requireAdmin();
+
+  const parsed = serviceIdsSchema.safeParse(serviceIds);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Pick at least one service." };
+  }
+
+  const supabase = createSupabaseAdminClient();
+
+  const { data: serviceRows } = await supabase
+    .from("services")
+    .select("id, active")
+    .in("id", parsed.data);
+  const fetched = serviceRows ?? [];
+  if (fetched.length !== parsed.data.length || fetched.some((s) => !s.active)) {
+    return { error: "One or more services are no longer available." };
+  }
+
+  const { error: junctionError } = await supabase
+    .from("appointment_services")
+    .insert(
+      parsed.data.map((sid, idx) => ({
+        appointment_id: appointmentId,
+        service_id: sid,
+        position: idx,
+      })),
+    );
+  if (junctionError) return { error: junctionError.message };
+
+  const { error: updateError } = await supabase
+    .from("appointments")
+    .update({ status: "completed", ends_at: new Date().toISOString() })
+    .eq("id", appointmentId)
+    .eq("status", "confirmed");
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/appointments");
+  return null;
 }
 
 // -------------------- Barbers --------------------

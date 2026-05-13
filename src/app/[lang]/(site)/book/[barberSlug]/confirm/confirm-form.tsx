@@ -21,7 +21,6 @@ type Messages = {
 
 type Props = {
   barberId: string;
-  serviceId: string;
   startsAt: string;
   locale: Locale;
   messages: Messages;
@@ -29,7 +28,6 @@ type Props = {
 
 export function ConfirmForm({
   barberId,
-  serviceId,
   startsAt,
   locale,
   messages,
@@ -42,7 +40,6 @@ export function ConfirmForm({
   return (
     <form action={formAction} className="mt-10 space-y-6">
       <input type="hidden" name="barberId" value={barberId} />
-      <input type="hidden" name="serviceId" value={serviceId} />
       <input type="hidden" name="startsAt" value={startsAt} />
       <input type="hidden" name="locale" value={locale} />
 

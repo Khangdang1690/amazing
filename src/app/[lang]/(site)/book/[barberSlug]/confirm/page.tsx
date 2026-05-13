@@ -2,9 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { getBarberBySlug } from "@/lib/queries";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatDateTimeLabel } from "@/lib/availability";
-import { formatPriceCents, formatDurationMinutes } from "@/lib/utils";
 import { isLocale, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { ConfirmForm } from "./confirm-form";
@@ -19,7 +17,7 @@ export async function generateMetadata({
   return { title: getDictionary(lang).book.metaConfirm };
 }
 
-type SearchParams = Promise<{ service?: string; startsAt?: string }>;
+type SearchParams = Promise<{ startsAt?: string }>;
 
 export default async function ConfirmPage({
   params,
@@ -32,23 +30,12 @@ export default async function ConfirmPage({
   if (!isLocale(lang)) notFound();
   const t = getDictionary(lang).book;
 
-  const { service: serviceId, startsAt } = await searchParams;
+  const { startsAt } = await searchParams;
 
   const barber = await getBarberBySlug(barberSlug);
   if (!barber) notFound();
 
-  if (!serviceId || !startsAt) {
-    redirect(localePath(lang, `/book/${barberSlug}`));
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { data: service } = await supabase
-    .from("services")
-    .select("id, name, description, duration_minutes, price_cents, active")
-    .eq("id", serviceId)
-    .maybeSingle();
-
-  if (!service || !service.active) {
+  if (!startsAt) {
     redirect(localePath(lang, `/book/${barberSlug}`));
   }
 
@@ -61,7 +48,7 @@ export default async function ConfirmPage({
   return (
     <div className="mx-auto max-w-[800px] px-6 py-12 md:px-10 md:py-16">
       <Link
-        href={`${localePath(lang, `/book/${barber.slug}`)}?service=${service.id}`}
+        href={localePath(lang, `/book/${barber.slug}`)}
         className="inline-flex items-center text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="mr-1 h-4 w-4" />
@@ -84,22 +71,14 @@ export default async function ConfirmPage({
           <dt className="eyebrow">{t.barberLabel}</dt>
           <dd className="font-display text-lg">{barber.name}</dd>
           <dt className="eyebrow">{t.serviceLabel}</dt>
-          <dd className="font-display text-lg">
-            {service.name}{" "}
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {formatDurationMinutes(service.duration_minutes)}
-            </span>
-          </dd>
-          <dt className="eyebrow">{t.priceLabel}</dt>
-          <dd className="num text-lg">
-            {formatPriceCents(service.price_cents)}
+          <dd className="text-sm text-muted-foreground">
+            {t.serviceDecidedInShop}
           </dd>
         </dl>
       </div>
 
       <ConfirmForm
         barberId={barber.id}
-        serviceId={service.id}
         startsAt={startsAt}
         locale={lang}
         messages={{

@@ -55,11 +55,35 @@ const APPOINTMENT_STATUSES = [
   "completed",
   "cancelled",
   "no_show",
+  "walkin",
 ] as const;
 type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 
 function isStatus(v: string | undefined): v is AppointmentStatus {
   return !!v && (APPOINTMENT_STATUSES as readonly string[]).includes(v);
+}
+
+// Flatten Supabase's `appointment_services(position, services(...))` shape
+// into a plain `services: [...]` array on the appointment, ordered by position.
+// Keeps the agent's view of the data shape clean - it gets one array of
+// services per appointment instead of having to walk a nested join.
+function reshapeAppointment<T extends Record<string, unknown>>(row: T): T & {
+  services: unknown[];
+} {
+  const junction = row.appointment_services as
+    | Array<{ position: number; services: unknown }>
+    | null
+    | undefined;
+  const ordered = (junction ?? [])
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map((j) => (Array.isArray(j.services) ? j.services[0] : j.services))
+    .filter((s): s is unknown => s !== null && s !== undefined);
+  const { appointment_services: _unused, ...rest } = row as T & {
+    appointment_services?: unknown;
+  };
+  void _unused;
+  return { ...(rest as T), services: ordered };
 }
 
 async function listAppointments(
@@ -77,14 +101,22 @@ async function listAppointments(
     .from("appointments")
     .select(
       `id, customer_name, customer_phone, starts_at, ends_at, status, notes, internal_notes,
-       barbers ( id, name ), services ( id, name, duration_minutes, price_cents )`,
+       barbers ( id, name ),
+       appointment_services ( position, services ( id, name, duration_minutes, price_cents ) )`,
     )
     .order("starts_at", { ascending: false })
     .limit(limit);
 
   if (isStatus(status)) q = q.eq("status", status);
   if (barberId) q = q.eq("barber_id", barberId);
-  if (serviceId) q = q.eq("service_id", serviceId);
+  if (serviceId) {
+    const { data: matching } = await s
+      .from("appointment_services")
+      .select("appointment_id")
+      .eq("service_id", serviceId);
+    const ids = (matching ?? []).map((r) => r.appointment_id as string);
+    q = q.in("id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]);
+  }
   if (from) q = q.gte("starts_at", from);
   if (to) q = q.lte("starts_at", to);
 
@@ -92,7 +124,7 @@ async function listAppointments(
   if (error) return { ok: false, error: error.message, summary: error.message };
   return {
     ok: true,
-    data,
+    data: (data ?? []).map(reshapeAppointment),
     summary: `Found ${data?.length ?? 0} appointment(s).`,
   };
 }
@@ -104,13 +136,14 @@ async function getAppointment(s: SupabaseClient, args: Args): Promise<ToolResult
     .from("appointments")
     .select(
       `id, customer_name, customer_phone, starts_at, ends_at, status, notes, internal_notes,
-       barbers ( id, name, slug ), services ( id, name, duration_minutes, price_cents )`,
+       barbers ( id, name, slug ),
+       appointment_services ( position, services ( id, name, duration_minutes, price_cents ) )`,
     )
     .eq("id", id)
     .maybeSingle();
   if (error) return { ok: false, error: error.message, summary: error.message };
   if (!data) return { ok: false, error: "not found", summary: "No appointment found." };
-  return { ok: true, data, summary: `Loaded appointment ${id}.` };
+  return { ok: true, data: reshapeAppointment(data), summary: `Loaded appointment ${id}.` };
 }
 
 async function updateAppointmentStatus(
@@ -517,10 +550,14 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
         status: {
           type: "string",
           description:
-            "One of: confirmed, completed, cancelled, no_show. Omit for all.",
+            "One of: confirmed, completed, cancelled, no_show, walkin. Omit for all.",
         },
         barber_id: { type: "string", description: "Filter by barber UUID." },
-        service_id: { type: "string", description: "Filter by service UUID." },
+        service_id: {
+          type: "string",
+          description:
+            "Filter to appointments that include this service UUID (an appointment may have multiple services).",
+        },
         from_iso: {
           type: "string",
           description: "ISO 8601 lower bound for starts_at, inclusive.",
@@ -561,7 +598,7 @@ export const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: "update_appointment_status",
     description:
-      "Change appointment status. Allowed values: confirmed, completed, cancelled, no_show.",
+      "Change appointment status. Allowed values: confirmed, completed, cancelled, no_show, walkin. A 'confirmed' appointment whose starts_at has passed and whose ends_at is still null is in the unified queue (alongside walk-ins) waiting to be served.",
     parameters: {
       type: "object",
       properties: {

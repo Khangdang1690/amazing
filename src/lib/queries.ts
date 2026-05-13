@@ -192,6 +192,55 @@ export async function getTranslationsFor(
   return Object.fromEntries((data ?? []).map((t) => [t.field, t.value]));
 }
 
+// -----------------------------------------------------------------
+// Multi-service appointment helpers.
+// -----------------------------------------------------------------
+
+type Servicey = { id: string; name: string } & Partial<Service>;
+
+type JunctionRow<S = Servicey> = {
+  position: number;
+  services: S | S[] | null;
+};
+
+/**
+ * Flatten the `appointment_services(position, services(...))` shape Supabase
+ * returns into a plain ordered array of services. Sorts by `position` so the
+ * customer's selection order is preserved. The caller chooses which service
+ * columns to select; the type follows the input.
+ */
+export function flattenAppointmentServices<S>(
+  rows: JunctionRow<S>[] | null | undefined,
+): S[] {
+  if (!rows) return [];
+  const ordered = [...rows].sort((a, b) => a.position - b.position);
+  const out: S[] = [];
+  for (const r of ordered) {
+    const s = Array.isArray(r.services) ? r.services[0] : r.services;
+    if (s) out.push(s);
+  }
+  return out;
+}
+
+/**
+ * Apply Vietnamese service-name translations to a flat list of services
+ * pulled out of an appointment join. Mirrors `getActiveServicesLocalized`
+ * but skips the initial fetch and accepts already-loaded rows.
+ */
+export async function localizeServices<T extends Servicey>(
+  services: T[],
+  locale: Locale,
+): Promise<T[]> {
+  if (services.length === 0 || locale === "en") return services;
+  const withIds = services.filter((s): s is T & { id: string } => !!s.id);
+  const localized = await applyTranslations(withIds, "service", locale, [
+    "name",
+    "description",
+  ] as const);
+  const byId = new Map(localized.map((s) => [s.id, s]));
+  return services.map((s) => (s.id ? byId.get(s.id) ?? s : s));
+}
+
 export function publicPhotoUrl(storagePath: string): string {
   // Allow full URLs (used by mock seed data); otherwise build the public
   // Supabase Storage URL: <SUPABASE_URL>/storage/v1/object/public/gallery/<path>

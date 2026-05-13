@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { addMinutes } from "date-fns";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createBookingSchema, requestOtpSchema, verifyOtpSchema } from "@/lib/validators";
 import { normalizeUSPhone } from "@/lib/phone";
@@ -19,7 +18,6 @@ export async function createBookingAction(
 ): Promise<ActionResult> {
   const parsed = createBookingSchema.safeParse({
     barberId: formData.get("barberId"),
-    serviceId: formData.get("serviceId"),
     startsAt: formData.get("startsAt"),
     customerName: formData.get("customerName"),
     customerPhone: formData.get("customerPhone"),
@@ -42,45 +40,29 @@ export async function createBookingAction(
 
   const supabase = createSupabaseAdminClient();
 
-  // Refetch barber + service so duration and names are authoritative
-  const [barberRes, serviceRes] = await Promise.all([
-    supabase
-      .from("barbers")
-      .select("id, name, active")
-      .eq("id", input.barberId)
-      .maybeSingle(),
-    supabase
-      .from("services")
-      .select("id, name, duration_minutes, price_cents, active")
-      .eq("id", input.serviceId)
-      .maybeSingle(),
-  ]);
-
-  const barber = barberRes.data;
-  const service = serviceRes.data;
+  const { data: barber } = await supabase
+    .from("barbers")
+    .select("id, name, active")
+    .eq("id", input.barberId)
+    .maybeSingle();
   if (!barber || !barber.active) {
     return { ok: false, error: "Barber not found." };
-  }
-  if (!service || !service.active) {
-    return { ok: false, error: "Service not found." };
   }
 
   const startsAt = new Date(input.startsAt);
   if (startsAt.getTime() < Date.now()) {
     return { ok: false, error: "That time has already passed." };
   }
-  const endsAt = addMinutes(startsAt, service.duration_minutes);
 
-  // Atomic insert with overlap check
+  // Atomic insert with exact-start-time overlap check. Services are assigned
+  // by staff at serve time; ends_at is recorded then.
   const { data: inserted, error } = await supabase.rpc(
     "create_appointment_if_free",
     {
       p_barber_id: barber.id,
-      p_service_id: service.id,
       p_customer_name: input.customerName,
       p_customer_phone: phoneE164,
       p_starts_at: startsAt.toISOString(),
-      p_ends_at: endsAt.toISOString(),
       p_notes: input.notes && input.notes.length > 0 ? input.notes : null,
     },
   );

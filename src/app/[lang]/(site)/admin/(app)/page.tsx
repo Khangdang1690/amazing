@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { flattenAppointmentServices } from "@/lib/queries";
 import { todayInShopTz } from "@/lib/availability";
 import { fromZonedTime } from "date-fns-tz";
 import { env } from "@/lib/env";
@@ -28,26 +29,35 @@ export default async function AdminTodayPage({
     .from("appointments")
     .select(
       `id, customer_name, customer_phone, starts_at, ends_at, status, notes, internal_notes,
-       barbers ( name ), services ( name )`,
+       barbers ( name ),
+       appointment_services ( position, services ( id, name ) )`,
     )
+    .neq("status", "walkin")
     .gte("starts_at", dayStart.toISOString())
     .lte("starts_at", dayEnd.toISOString())
     .order("starts_at", { ascending: true });
 
-  const list = (appts ?? []).map((a) => ({
-    id: a.id as string,
-    customer_name: a.customer_name as string,
-    customer_phone: a.customer_phone as string,
-    starts_at: a.starts_at as string,
-    status: a.status as
+  const nowMs = new Date().getTime();
+  const list = (appts ?? []).map((a) => {
+    const starts_at = a.starts_at as string;
+    const status = a.status as
       | "confirmed"
       | "completed"
       | "cancelled"
-      | "no_show",
-    notes: a.notes as string | null,
-    barber: Array.isArray(a.barbers) ? a.barbers[0] : a.barbers,
-    service: Array.isArray(a.services) ? a.services[0] : a.services,
-  }));
+      | "no_show";
+    return {
+      id: a.id as string,
+      customer_name: a.customer_name as string,
+      customer_phone: (a.customer_phone as string | null) ?? null,
+      starts_at,
+      status,
+      notes: a.notes as string | null,
+      barber: Array.isArray(a.barbers) ? a.barbers[0] : a.barbers,
+      services: flattenAppointmentServices(a.appointment_services),
+      isLate:
+        status === "confirmed" && new Date(starts_at).getTime() <= nowMs,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -85,19 +95,25 @@ export default async function AdminTodayPage({
                       )}
                     </span>
                     <StatusBadge status={a.status} />
+                    {a.isLate && <Badge variant="destructive">Running late</Badge>}
                   </div>
                   <div className="mt-1 font-medium">{a.customer_name}</div>
                   <div className="text-sm text-muted-foreground">
-                    {a.service?.name} with {a.barber?.name}
+                    {a.services.length === 0
+                      ? "(no services yet)"
+                      : a.services.map((s) => s.name).join(", ")}
+                    {a.barber?.name ? ` with ${a.barber.name}` : ""}
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <a
-                      href={`tel:${a.customer_phone}`}
-                      className="hover:text-foreground"
-                    >
-                      {formatPhone(a.customer_phone)}
-                    </a>
-                  </div>
+                  {a.customer_phone && (
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <a
+                        href={`tel:${a.customer_phone}`}
+                        className="hover:text-foreground"
+                      >
+                        {formatPhone(a.customer_phone)}
+                      </a>
+                    </div>
+                  )}
                   {a.notes && (
                     <p className="mt-2 rounded bg-muted/50 px-2 py-1 text-xs text-muted-foreground">
                       Note: {a.notes}
